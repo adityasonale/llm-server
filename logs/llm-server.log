@@ -1,0 +1,12 @@
+2026-06-22 17:52:54 [INFO    ] llm-server.main: Incoming request — provider: groq, model: llama-3.3-70b-versatile
+2026-06-22 17:52:54 [INFO    ] llm-server.server: Routing request to provider: groq
+2026-06-22 17:52:54 [INFO    ] llm-server.providers.groq.services: Calling Groq API with model: llama-3.3-70b-versatile
+2026-06-22 17:52:56 [INFO    ] llm-server.providers.groq.services: Response received from Groq API
+2026-06-22 17:52:56 [INFO    ] llm-server.main: Request completed successfully
+2026-06-22 18:50:38 [WARNING ] llm-server.authentication.api_key: Invalid API key attempt: a19f2dd7b58df4370d130f1008594771bde0f463ac730b34b5e66898d05c189e
+2026-06-22 18:51:02 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-22 18:51:02 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: groq, model: llama-3.3-70b-versatile
+2026-06-22 18:51:02 [INFO    ] llm-server.server: Routing request to provider: groq
+2026-06-22 18:51:02 [INFO    ] llm-server.providers.groq.services: Calling Groq API with model: llama-3.3-70b-versatile
+2026-06-22 18:51:03 [INFO    ] llm-server.providers.groq.services: Response received from Groq API
+2026-06-22 18:51:03 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
