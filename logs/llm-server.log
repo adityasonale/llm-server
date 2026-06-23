@@ -10,3 +10,129 @@
 2026-06-22 18:51:02 [INFO    ] llm-server.providers.groq.services: Calling Groq API with model: llama-3.3-70b-versatile
 2026-06-22 18:51:03 [INFO    ] llm-server.providers.groq.services: Response received from Groq API
 2026-06-22 18:51:03 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-06-23 11:13:42 [WARNING ] llm-server.authentication.api_key: Invalid API key attempt: your_key
+2026-06-23 11:14:06 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 11:14:06 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: distilled-qwen-7b
+2026-06-23 11:14:06 [INFO    ] llm-server.server: Routing request to provider: local
+2026-06-23 11:14:06 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-06-23 11:14:06 [ERROR   ] llm-server.main: Bad request: 1 validation error for GenerateResponse
+content
+  Input should be a valid string [type=string_type, input_value=<coroutine object LocalSe...e at 0x0000026E881DB220>, input_type=coroutine]
+    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+2026-06-23 11:15:52 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 11:15:52 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: distilled-qwen-7b
+2026-06-23 11:15:52 [INFO    ] llm-server.server: Routing request to provider: local
+2026-06-23 11:15:52 [ERROR   ] llm-server.main: Internal error: 'LocalService' object has no attribute '_current_model'
+2026-06-23 11:19:29 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 11:19:29 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: distilled-qwen-7b
+2026-06-23 11:19:29 [INFO    ] llm-server.server: Routing request to provider: local
+2026-06-23 11:19:29 [INFO    ] llm-server.providers.local.services: Loading local model: distilled-qwen-7b
+2026-06-23 11:19:36 [ERROR   ] llm-server.main: Bad request: Repo id must use alphanumeric chars or '-', '_', '.', '--' and '..' are forbidden, '-' and '.' cannot start or end the name, max length is 96: 'D:s code\python\models\LLMs\DeepSeek-R1-Distilled-Qwen-7B'.
+2026-06-23 11:21:36 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 11:21:36 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: distilled-qwen-7b
+2026-06-23 11:21:36 [INFO    ] llm-server.server: Routing request to provider: local
+2026-06-23 11:21:36 [INFO    ] llm-server.providers.local.services: Loading local model: distilled-qwen-7b
+2026-06-23 11:22:26 [INFO    ] llm-server.providers.local.services: Model loaded successfully: distilled-qwen-7b
+2026-06-23 11:22:27 [INFO    ] llm-server.providers.local.services: Running local inference — model: distilled-qwen-7b
+2026-06-23 11:22:56 [INFO    ] llm-server.providers.local.services: Local inference completed — model: distilled-qwen-7b
+2026-06-23 11:22:56 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-06-23 11:23:32 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 11:23:32 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: minichat-1.5-3b
+2026-06-23 11:23:32 [INFO    ] llm-server.server: Routing request to provider: local
+2026-06-23 11:23:32 [INFO    ] llm-server.providers.local.services: Unloading current model: distilled-qwen-7b
+2026-06-23 11:23:34 [INFO    ] llm-server.providers.local.services: Loading local model: minichat-1.5-3b
+2026-06-23 11:23:44 [INFO    ] llm-server.providers.local.services: Model loaded successfully: minichat-1.5-3b
+2026-06-23 11:23:44 [INFO    ] llm-server.providers.local.services: Running local inference — model: minichat-1.5-3b
+2026-06-23 11:23:54 [INFO    ] llm-server.providers.local.services: Local inference completed — model: minichat-1.5-3b
+2026-06-23 11:23:54 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-06-23 11:44:18 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 11:44:18 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: minichat-1.5-3b
+2026-06-23 11:44:18 [INFO    ] llm-server.server: Routing request to provider: local
+2026-06-23 11:44:18 [INFO    ] llm-server.providers.local.services: Loading local model: minichat-1.5-3b
+2026-06-23 11:44:18 [INFO    ] llm-server.utils.system: before load | RAM: 10.78/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯] | VRAM: 1.06/8.00GB	 VRAM:[▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:44:18 [ERROR   ] llm-server.main: Bad request: 1 validation error for CustomLLM
+model_path
+  Input should be a valid string [type=string_type, input_value={'path': 'D:/vs code/pyth...pt_template': 'mistral'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+2026-06-23 11:45:55 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 11:45:55 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: minichat-1.5-3b
+2026-06-23 11:45:55 [INFO    ] llm-server.server: Routing request to provider: local
+2026-06-23 11:45:55 [INFO    ] llm-server.providers.local.services: Loading local model: minichat-1.5-3b
+2026-06-23 11:45:55 [INFO    ] llm-server.utils.system: before load | RAM: 10.88/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯] | VRAM: 1.06/8.00GB	 VRAM:[▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:46:21 [INFO    ] llm-server.utils.system: after load | RAM: 9.08/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯] | VRAM: 3.79/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:46:21 [INFO    ] llm-server.providers.local.services: Model loaded successfully: minichat-1.5-3b
+2026-06-23 11:46:21 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: mistral
+2026-06-23 11:46:21 [INFO    ] llm-server.providers.local.services: Running local inference — model: minichat-1.5-3b
+2026-06-23 11:46:21 [INFO    ] llm-server.utils.system: before inference | RAM: 9.08/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯] | VRAM: 3.79/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:46:32 [INFO    ] llm-server.utils.system: after inference | RAM: 9.69/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯] | VRAM: 3.85/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:46:32 [INFO    ] llm-server.providers.local.services: Local inference completed — model: minichat-1.5-3b
+2026-06-23 11:46:32 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-06-23 11:47:03 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 11:47:03 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: distilled-qwen-7b
+2026-06-23 11:47:03 [INFO    ] llm-server.server: Routing request to provider: local
+2026-06-23 11:47:03 [INFO    ] llm-server.providers.local.services: Unloading current model: minichat-1.5-3b
+2026-06-23 11:47:03 [INFO    ] llm-server.utils.system: before unload | RAM: 9.67/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯] | VRAM: 3.85/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:47:04 [INFO    ] llm-server.utils.system: after unload | RAM: 9.88/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯] | VRAM: 3.76/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:47:04 [INFO    ] llm-server.providers.local.services: Loading local model: distilled-qwen-7b
+2026-06-23 11:47:04 [INFO    ] llm-server.utils.system: before load | RAM: 9.88/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯] | VRAM: 3.76/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:47:35 [INFO    ] llm-server.utils.system: after load | RAM: 7.47/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 6.87/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯]
+2026-06-23 11:47:35 [INFO    ] llm-server.providers.local.services: Model loaded successfully: distilled-qwen-7b
+2026-06-23 11:47:35 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: qwen
+2026-06-23 11:47:35 [INFO    ] llm-server.providers.local.services: Running local inference — model: distilled-qwen-7b
+2026-06-23 11:47:35 [INFO    ] llm-server.utils.system: before inference | RAM: 7.47/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 6.87/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯]
+2026-06-23 11:48:09 [INFO    ] llm-server.utils.system: after inference | RAM: 7.95/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 6.90/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯]
+2026-06-23 11:48:09 [INFO    ] llm-server.providers.local.services: Local inference completed — model: distilled-qwen-7b
+2026-06-23 11:48:09 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-06-23 11:48:25 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 11:48:25 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: minichat-1.5-3b
+2026-06-23 11:48:25 [INFO    ] llm-server.server: Routing request to provider: local
+2026-06-23 11:48:25 [INFO    ] llm-server.providers.local.services: Unloading current model: distilled-qwen-7b
+2026-06-23 11:48:25 [INFO    ] llm-server.utils.system: before unload | RAM: 7.89/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 6.90/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯]
+2026-06-23 11:48:26 [INFO    ] llm-server.utils.system: after unload | RAM: 8.23/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 3.76/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:48:26 [INFO    ] llm-server.providers.local.services: Loading local model: minichat-1.5-3b
+2026-06-23 11:48:26 [INFO    ] llm-server.utils.system: before load | RAM: 8.23/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 3.76/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:48:36 [INFO    ] llm-server.utils.system: after load | RAM: 7.78/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 3.80/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:48:36 [INFO    ] llm-server.providers.local.services: Model loaded successfully: minichat-1.5-3b
+2026-06-23 11:48:36 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: mistral
+2026-06-23 11:48:36 [INFO    ] llm-server.providers.local.services: Running local inference — model: minichat-1.5-3b
+2026-06-23 11:48:36 [INFO    ] llm-server.utils.system: before inference | RAM: 7.78/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 3.80/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:48:45 [INFO    ] llm-server.utils.system: after inference | RAM: 7.89/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 3.86/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:48:45 [INFO    ] llm-server.providers.local.services: Local inference completed — model: minichat-1.5-3b
+2026-06-23 11:48:45 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-06-23 11:49:12 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 11:49:12 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: distilled-qwen-7b
+2026-06-23 11:49:12 [INFO    ] llm-server.server: Routing request to provider: local
+2026-06-23 11:49:12 [INFO    ] llm-server.providers.local.services: Unloading current model: minichat-1.5-3b
+2026-06-23 11:49:12 [INFO    ] llm-server.utils.system: before unload | RAM: 8.08/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 3.86/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:49:12 [INFO    ] llm-server.utils.system: after unload | RAM: 8.08/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 3.76/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:49:12 [INFO    ] llm-server.providers.local.services: Loading local model: distilled-qwen-7b
+2026-06-23 11:49:12 [INFO    ] llm-server.utils.system: before load | RAM: 8.08/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 3.76/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 11:49:42 [INFO    ] llm-server.utils.system: after load | RAM: 7.05/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 6.87/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯]
+2026-06-23 11:49:42 [INFO    ] llm-server.providers.local.services: Model loaded successfully: distilled-qwen-7b
+2026-06-23 11:49:42 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: qwen
+2026-06-23 11:49:42 [INFO    ] llm-server.providers.local.services: Running local inference — model: distilled-qwen-7b
+2026-06-23 11:49:42 [INFO    ] llm-server.utils.system: before inference | RAM: 7.05/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 6.87/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯]
+2026-06-23 11:50:22 [INFO    ] llm-server.utils.system: after inference | RAM: 7.85/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯] | VRAM: 6.90/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯]
+2026-06-23 11:50:22 [INFO    ] llm-server.providers.local.services: Local inference completed — model: distilled-qwen-7b
+2026-06-23 11:50:22 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-06-23 12:11:41 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 12:11:41 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: distilled-qwen-7b
+2026-06-23 12:11:41 [INFO    ] llm-server.server: Routing request to provider: local
+2026-06-23 12:11:41 [INFO    ] llm-server.providers.local.services: Loading local model: distilled-qwen-7b
+2026-06-23 12:11:41 [INFO    ] llm-server.utils.system: before load
+			 RAM:  RAM: 12.09/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯]
+			 VRAM: VRAM: 1.06/8.00GB	 VRAM:[▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯]
+2026-06-23 12:12:24 [INFO    ] llm-server.utils.system: after load
+			 RAM:  RAM: 7.19/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 6.56/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯]
+2026-06-23 12:12:24 [INFO    ] llm-server.providers.local.services: Model loaded successfully: distilled-qwen-7b
+2026-06-23 12:12:24 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: qwen
+2026-06-23 12:12:24 [INFO    ] llm-server.providers.local.services: Running local inference — model: distilled-qwen-7b
+2026-06-23 12:12:24 [INFO    ] llm-server.utils.system: before inference
+			 RAM:  RAM: 7.20/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 6.56/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯]
+2026-06-23 12:12:58 [INFO    ] llm-server.utils.system: after inference
+			 RAM:  RAM: 9.29/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 6.60/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯]
+2026-06-23 12:12:58 [INFO    ] llm-server.providers.local.services: Local inference completed — model: distilled-qwen-7b
+2026-06-23 12:12:58 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal

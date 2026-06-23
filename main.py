@@ -38,7 +38,7 @@ async def generate(request: GenerateRequest, x_api_key: str = Header(...)):
     logger.info("Incoming request — user: %s, project: %s, provider: %s, model: %s", entry["user"], entry["project"], request.provider, request.model)
 
     try:
-        content = get_response(
+        content = await get_response(
             system_prompt=request.system_prompt,
             user_prompt=request.user_prompt,
             model=request.model,
