@@ -1,3 +1,4 @@
+from langsmith import traceable
 from providers.base import LLMProvider
 from providers.groq.services import GroqService
 from providers.local.services import LocalService
@@ -10,6 +11,7 @@ PROVIDERS: dict[str, LLMProvider] = {
     "local": LocalService(),
 }
 
+@traceable(run_type="llm", name="llm-server")
 async def get_response(system_prompt: str, user_prompt: str, model: str, provider: str) -> str:
     logger.info("Routing request to provider: %s", provider)
     service = PROVIDERS.get(provider)

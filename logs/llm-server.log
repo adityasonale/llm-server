@@ -136,3 +136,15 @@ model_path
 			 VRAM: VRAM: 6.60/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯]
 2026-06-23 12:12:58 [INFO    ] llm-server.providers.local.services: Local inference completed — model: distilled-qwen-7b
 2026-06-23 12:12:58 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-06-23 12:57:42 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 12:57:42 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: groq, model: llama-3.1-8b-instant
+2026-06-23 12:57:42 [INFO    ] llm-server.server: Routing request to provider: groq
+2026-06-23 12:57:42 [INFO    ] llm-server.providers.groq.services: Calling Groq API with model: llama-3.1-8b-instant
+2026-06-23 12:57:42 [INFO    ] llm-server.providers.groq.services: Response received from Groq API
+2026-06-23 12:57:42 [ERROR   ] llm-server.main: Internal error: object str can't be used in 'await' expression
+2026-06-23 12:58:34 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 12:58:34 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: groq, model: llama-3.1-8b-instant
+2026-06-23 12:58:34 [INFO    ] llm-server.server: Routing request to provider: groq
+2026-06-23 12:58:34 [INFO    ] llm-server.providers.groq.services: Calling Groq API with model: llama-3.1-8b-instant
+2026-06-23 12:58:35 [INFO    ] llm-server.providers.groq.services: Response received from Groq API
+2026-06-23 12:58:35 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal

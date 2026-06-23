@@ -9,7 +9,7 @@ class GroqService(LLMProvider):
     def __init__(self):
         self.model = Groq()
 
-    def fetch_response(self, system_prompt:str, user_prompt:str, model: str):
+    async def fetch_response(self, system_prompt:str, user_prompt:str, model: str):
         logger.info("Calling Groq API with model: %s", model)
         response = self.model.fetch_response(
             system_prompt, 
