@@ -1,0 +1,23 @@
+# Secrets — injected at runtime via env_file, never baked into the image.
+.env
+
+# Local Python environments and caches
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Runtime output — the container writes to a mounted volume instead
+logs/
+
+# VCS and editor state
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Docs and build artefacts
+README.md
+CLAUDE.md
+build/
+dist/

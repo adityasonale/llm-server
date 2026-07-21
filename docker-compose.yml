@@ -1,0 +1,15 @@
+services:
+  llm-server:
+    build: .
+    image: llm-server:latest
+    container_name: llm-server
+    # Secrets are read from .env at container start, not baked into the image.
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    # Logs are written inside the container but land on the host, so they
+    # survive `docker compose down` and stay readable without exec-ing in.
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped

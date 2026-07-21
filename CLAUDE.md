@@ -9,13 +9,32 @@ A self-hosted FastAPI gateway that fronts multiple LLM providers behind a single
 ## Running
 
 ```bash
-pip install -r requirements.txt
-uvicorn main:app --reload           # dev server on :8000
+pip install -r requirements-local.txt   # core + the local provider's torch stack
+uvicorn main:app --port 8000
 ```
 
-There is no test suite or linter config in the repo. `requirements.txt` pins the CPU build of torch; the CUDA build used in development is installed separately (see the comment in that file).
+Dependencies are split across two files: `requirements.txt` is the core server (FastAPI, requests, langsmith) and `requirements-local.txt` includes it via `-r` and adds the local provider's stack (torch, transformers, bitsandbytes, accelerate, langchain-core, psutil). Both pin the CPU build of torch, since that is what PyPI serves; the CUDA build used in development is installed separately (see the comment in `requirements-local.txt`).
 
-Note that `utils/system.py` imports `torch` unconditionally and is imported by `providers/local/services.py`, which `server.py` imports at module load. Torch is therefore required to start the server even when only using Groq.
+Note that `utils/system.py` imports `torch` unconditionally and is imported by `providers/local/services.py`, which `server.py` imports at module load. **Torch is therefore required to start the server even when only using Groq** — which is why the Docker image installs the full stack. Deferring those imports is the prerequisite for a slim image; it has been tried and reverted once, so discuss before attempting it again.
+
+`--reload` is available but costs you the resident local model on every save, since a reload is a fresh process. There is no test suite or linter config in the repo.
+
+## Docker
+
+```bash
+docker compose up --build       # build and run on :8000
+docker compose logs -f          # follow output
+docker compose down             # stop
+```
+
+`docker-compose.yml` injects `.env` via `env_file` (secrets are never baked into the image) and bind-mounts `./logs` so the rotating log survives the container. The image runs as non-root `appuser` and healthchecks `/health` using stdlib `urllib`, as the slim base has no `curl`.
+
+Two caveats on the current image, both intentional and both worth fixing later:
+
+- It is several GB, because the eager-import chain above forces the whole torch stack in.
+- Torch inside it is the CPU build and no GPU passthrough is configured, so `provider: "local"` will technically run but at unusable speed. The container is for the Groq path; run local models on bare metal for now.
+
+**The image has not been built or run yet** — these files are committed untested.
 
 ## Configuration
 

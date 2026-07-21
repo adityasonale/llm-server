@@ -1,0 +1,18 @@
+# Local provider: loads models from disk onto the GPU.
+# Deliberately NOT installed in the default Docker image — see Dockerfile.
+#
+# Install for bare-metal development with:
+#   pip install -r requirements-local.txt
+#
+# The torch pin below is the CPU build (that is what PyPI serves). For the
+# CUDA build used in development, install it separately first:
+#   pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+
+-r requirements.txt
+
+torch==2.5.1
+transformers==4.57.3
+accelerate==1.10.1
+bitsandbytes==0.47.0
+langchain-core==0.3.76
+psutil==5.9.8
