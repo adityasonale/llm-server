@@ -148,3 +148,13 @@ model_path
 2026-06-23 12:58:34 [INFO    ] llm-server.providers.groq.services: Calling Groq API with model: llama-3.1-8b-instant
 2026-06-23 12:58:35 [INFO    ] llm-server.providers.groq.services: Response received from Groq API
 2026-06-23 12:58:35 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-06-23 14:33:49 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-06-23 14:33:49 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: groq, model: llama-3.3-70b-versatile
+2026-06-23 14:33:49 [INFO    ] llm-server.server: Routing request to provider: groq
+2026-06-23 14:33:49 [INFO    ] llm-server.providers.groq.services: Calling Groq API with model: llama-3.3-70b-versatile
+2026-06-23 14:33:49 [INFO    ] llm-server.providers.groq.services: Groq API response received — model: llama-3.3-70b-versatile, prompt_tokens: 46, completion_tokens: 11, total_tokens: 57
+2026-06-23 14:33:49 [INFO    ] llm-server.server: Provider response time — provider: groq, model: llama-3.3-70b-versatile, latency: 0.543s
+2026-06-23 14:33:49 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-07-21 18:12:40 [INFO    ] llm-server.server: LLM_MODE: api — providers enabled: ['groq']
+2026-07-21 18:13:16 [INFO    ] llm-server.server: LLM_MODE: local — providers enabled: ['local']
+2026-07-21 18:13:29 [INFO    ] llm-server.server: LLM_MODE: both — providers enabled: ['groq', 'local']

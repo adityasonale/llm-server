@@ -1,3 +1,4 @@
+import time
 from langsmith import traceable
 from providers.base import LLMProvider
 from providers.groq.services import GroqService
@@ -20,4 +21,9 @@ async def get_response(system_prompt: str, user_prompt: str, model: str, provide
         logger.error("Unknown provider requested: %s", provider)
         raise ValueError(f"Unknown provider: '{provider}'. Available: {list(PROVIDERS.keys())}")
 
-    return await service.fetch_response(system_prompt, user_prompt, model)
+    start = time.perf_counter()
+    result = await service.fetch_response(system_prompt, user_prompt, model)
+    elapsed = time.perf_counter() - start
+    logger.info("Provider response time — provider: %s, model: %s, latency: %.3fs", provider, model, elapsed)
+
+    return result
