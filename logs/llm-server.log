@@ -17,3 +17,98 @@
 2026-07-22 12:02:28 [INFO    ] llm-server.providers.local.services: Using local weights for minichat-1.5-3b: D:/vs code/python/models/LLMs/MiniChat-1.5-3B
 2026-07-22 12:02:28 [WARNING ] llm-server.providers.local.services: Local path not found for x (/nope) — falling back to Hub: org/model
 2026-07-22 12:02:28 [INFO    ] llm-server.providers.local.services: Loading x from Hub: org/model
+2026-07-22 20:45:29 [INFO    ] llm-server.providers.local.services: Request queued — position 2
+2026-07-22 20:45:29 [INFO    ] llm-server.providers.local.services: Request queued — position 3
+2026-07-22 20:45:29 [WARNING ] llm-server.providers.local.services: Refusing request — 3 already in flight
+2026-07-22 20:45:29 [WARNING ] llm-server.providers.local.services: Refusing request — 3 already in flight
+2026-07-22 20:45:29 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: mistral
+2026-07-22 20:45:29 [INFO    ] llm-server.providers.local.services: Running local inference — model: m
+2026-07-22 20:45:30 [INFO    ] llm-server.providers.local.services: Local inference completed — model: m
+2026-07-22 20:45:30 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: mistral
+2026-07-22 20:45:30 [INFO    ] llm-server.providers.local.services: Running local inference — model: m
+2026-07-22 20:45:30 [INFO    ] llm-server.providers.local.services: Local inference completed — model: m
+2026-07-22 20:45:30 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: mistral
+2026-07-22 20:45:30 [INFO    ] llm-server.providers.local.services: Running local inference — model: m
+2026-07-22 20:45:31 [INFO    ] llm-server.providers.local.services: Local inference completed — model: m
+2026-07-22 20:45:31 [INFO    ] llm-server.providers.local.capacity: VRAM estimate for DeepSeek-R1-Distilled-Qwen-7B — weights: 5.07GB (quantize=4-bit), +1.5GB overhead, total: 6.57GB
+2026-07-22 20:47:49 [INFO    ] llm-server.providers.local.services: Request queued — position 2
+2026-07-22 20:47:49 [INFO    ] llm-server.providers.local.services: Request queued — position 3
+2026-07-22 20:47:49 [WARNING ] llm-server.providers.local.services: Refusing request — 3 already in flight
+2026-07-22 20:47:49 [WARNING ] llm-server.providers.local.services: Refusing request — 3 already in flight
+2026-07-22 20:47:49 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: mistral
+2026-07-22 20:47:49 [INFO    ] llm-server.providers.local.services: Running local inference — model: m
+2026-07-22 20:47:50 [INFO    ] llm-server.providers.local.services: Local inference completed — model: m
+2026-07-22 20:47:50 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: mistral
+2026-07-22 20:47:50 [INFO    ] llm-server.providers.local.services: Running local inference — model: m
+2026-07-22 20:47:50 [INFO    ] llm-server.providers.local.services: Local inference completed — model: m
+2026-07-22 20:47:50 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: mistral
+2026-07-22 20:47:50 [INFO    ] llm-server.providers.local.services: Running local inference — model: m
+2026-07-22 20:47:50 [INFO    ] llm-server.providers.local.services: Local inference completed — model: m
+2026-07-22 21:20:15 [WARNING ] llm-server.authentication.api_key: Invalid API key attempt: a19f2dd7b58df4370d130f1008594771bde0f463ac730b34b5e66898d05c189
+2026-07-22 21:20:27 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-07-22 21:20:27 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: distilled-qwen-7b
+2026-07-22 21:20:27 [INFO    ] llm-server.server: Routing request to provider: local
+2026-07-22 21:20:27 [INFO    ] llm-server.providers.local.services: Using local weights for distilled-qwen-7b: D:/vs code/python/models/LLMs/DeepSeek-R1-Distilled-Qwen-7B
+2026-07-22 21:20:28 [INFO    ] llm-server.providers.local.capacity: VRAM estimate for DeepSeek-R1-Distilled-Qwen-7B — weights: 5.07GB (quantize=4-bit), +1.5GB overhead, total: 6.57GB
+2026-07-22 21:20:28 [INFO    ] llm-server.providers.local.services: VRAM preflight passed for distilled-qwen-7b — needs ~6.57GB, 6.94GB available
+2026-07-22 21:20:28 [INFO    ] llm-server.providers.local.services: Loading local model: distilled-qwen-7b
+2026-07-22 21:20:28 [INFO    ] llm-server.utils.system: before load
+			 RAM:  RAM: 11.11/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯]
+			 VRAM: VRAM: 1.06/8.00GB	 VRAM:[▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯]
+			 TORCH: reserved 0.00GB, allocated 0.00GB, cached 0.00GB	 available: 6.94GB
+2026-07-22 21:21:22 [INFO    ] llm-server.utils.system: after load
+			 RAM:  RAM: 9.33/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 6.56/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯]
+			 TORCH: reserved 5.49GB, allocated 5.18GB, cached 0.31GB	 available: 1.74GB
+2026-07-22 21:21:22 [INFO    ] llm-server.providers.local.services: Model loaded successfully: distilled-qwen-7b
+2026-07-22 21:21:22 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: qwen
+2026-07-22 21:21:22 [INFO    ] llm-server.providers.local.services: Running local inference — model: distilled-qwen-7b
+2026-07-22 21:21:23 [INFO    ] llm-server.utils.system: before inference
+			 RAM:  RAM: 9.35/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 6.56/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯]
+			 TORCH: reserved 5.49GB, allocated 5.18GB, cached 0.31GB	 available: 1.74GB
+2026-07-22 21:22:37 [INFO    ] llm-server.utils.system: after inference
+			 RAM:  RAM: 9.50/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 6.64/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯]
+			 TORCH: reserved 5.55GB, allocated 5.19GB, cached 0.36GB	 available: 1.72GB
+2026-07-22 21:22:37 [INFO    ] llm-server.providers.local.services: Local inference completed — model: distilled-qwen-7b
+2026-07-22 21:22:37 [INFO    ] llm-server.server: Provider response time — provider: local, model: distilled-qwen-7b, latency: 129.918s
+2026-07-22 21:22:37 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal
+2026-07-22 21:23:11 [INFO    ] llm-server.authentication.api_key: Authorised request — user: aditya, project: personal
+2026-07-22 21:23:11 [INFO    ] llm-server.main: Incoming request — user: aditya, project: personal, provider: local, model: minichat-1.5-3b
+2026-07-22 21:23:11 [INFO    ] llm-server.server: Routing request to provider: local
+2026-07-22 21:23:11 [INFO    ] llm-server.providers.local.services: Using local weights for minichat-1.5-3b: D:/vs code/python/models/LLMs/MiniChat-1.5-3B
+2026-07-22 21:23:11 [INFO    ] llm-server.providers.local.capacity: VRAM estimate for MiniChat-1.5-3B — weights: 1.83GB (quantize=4-bit), +1.5GB overhead, total: 3.33GB
+2026-07-22 21:23:11 [INFO    ] llm-server.providers.local.services: VRAM preflight passed for minichat-1.5-3b — needs ~3.33GB, 6.94GB available
+2026-07-22 21:23:11 [INFO    ] llm-server.providers.local.services: Unloading current model: distilled-qwen-7b
+2026-07-22 21:23:11 [INFO    ] llm-server.utils.system: before unload
+			 RAM:  RAM: 9.46/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 6.64/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯]
+			 TORCH: reserved 5.55GB, allocated 5.19GB, cached 0.36GB	 available: 1.72GB
+2026-07-22 21:23:13 [INFO    ] llm-server.utils.system: after unload
+			 RAM:  RAM: 9.65/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 3.96/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+			 TORCH: reserved 2.87GB, allocated 0.01GB, cached 2.86GB	 available: 6.90GB
+2026-07-22 21:23:13 [INFO    ] llm-server.providers.local.services: Loading local model: minichat-1.5-3b
+2026-07-22 21:23:13 [INFO    ] llm-server.utils.system: before load
+			 RAM:  RAM: 9.65/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 3.96/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯]
+			 TORCH: reserved 2.87GB, allocated 0.01GB, cached 2.86GB	 available: 6.90GB
+2026-07-22 21:23:24 [INFO    ] llm-server.utils.system: after load
+			 RAM:  RAM: 9.05/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 4.00/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯]
+			 TORCH: reserved 2.91GB, allocated 1.88GB, cached 1.04GB	 available: 5.03GB
+2026-07-22 21:23:24 [INFO    ] llm-server.providers.local.services: Model loaded successfully: minichat-1.5-3b
+2026-07-22 21:23:24 [INFO    ] llm-server.providers.local.templates: Resolving prompt with template: mistral
+2026-07-22 21:23:24 [INFO    ] llm-server.providers.local.services: Running local inference — model: minichat-1.5-3b
+2026-07-22 21:23:24 [INFO    ] llm-server.utils.system: before inference
+			 RAM:  RAM: 9.05/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 4.00/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯]
+			 TORCH: reserved 2.91GB, allocated 1.88GB, cached 1.04GB	 available: 5.03GB
+2026-07-22 21:23:27 [INFO    ] llm-server.utils.system: after inference
+			 RAM:  RAM: 9.04/15.29GB	 RAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯]
+			 VRAM: VRAM: 4.03/8.00GB	 VRAM:[▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯]
+			 TORCH: reserved 2.94GB, allocated 1.88GB, cached 1.06GB	 available: 5.03GB
+2026-07-22 21:23:27 [INFO    ] llm-server.providers.local.services: Local inference completed — model: minichat-1.5-3b
+2026-07-22 21:23:27 [INFO    ] llm-server.server: Provider response time — provider: local, model: minichat-1.5-3b, latency: 16.430s
+2026-07-22 21:23:27 [INFO    ] llm-server.main: Request completed — user: aditya, project: personal

@@ -1,7 +1,7 @@
 import asyncio
 import gc
 from pathlib import Path
-from providers.base import LLMProvider
+from providers.base import LLMProvider, ProviderOverloadedError
 from providers.local.capacity import estimate_vram_gb
 from providers.local.local_llm_server import CustomLLM
 from providers.local.templates import resolve_prompt
@@ -11,6 +11,15 @@ from utils.system import SystemMonitor
 
 logger = get_logger(__name__)
 monitor = SystemMonitor()
+
+# Only one request can use the GPU at a time, so everything else waits. These
+# bound that wait instead of letting it grow without limit.
+#
+# The counter covers the running request too, not just those queued behind it:
+# 3 means one running plus two waiting. A 7B inference measured ~33s, so the
+# last accepted request waits roughly 66s.
+MAX_INFLIGHT_REQUESTS = 3
+QUEUE_TIMEOUT_SECONDS = 120
 
 
 def _resolve_source(model: str, config: dict) -> tuple[str, bool]:
@@ -48,8 +57,9 @@ class LocalService(LLMProvider):
         self._current_model: str | None = None
         self._current_template: str | None = None
         self._lock = asyncio.Lock()
-        # VRAM available to this process just before the resident model was
-        # loaded — i.e. what will be available again once it is unloaded.
+        # Requests waiting for the lock. Not the same as lock.locked(): this is how many are queued behind whoever is currently running.
+        self._waiting = 0
+        # VRAM available to this process just before the resident model was loaded — i.e. what will be available again once it is unloaded.
         self._available_vram_before_load: float | None = None
 
     def _check_capacity(self, model: str, source: str, local_files_only: bool) -> None:
@@ -83,6 +93,10 @@ class LocalService(LLMProvider):
             available = self._available_vram_before_load
 
         if required > available:
+            # Deliberately NOT ProviderOverloadedError: this does not clear on
+            # its own, so telling the client to retry would send it into a
+            # futile loop. The model simply cannot be served by this device —
+            # a 400, like asking for a model that does not exist.
             raise ValueError(
                 f"Model '{model}' needs ~{required:.2f}GB of VRAM but only {available:.2f}GB "
                 f"will be available on a {total:.2f}GB device. Refusing to load; "
@@ -139,16 +153,58 @@ class LocalService(LLMProvider):
         monitor.log_memory("after load")
         logger.info("Model loaded successfully: %s", model)
 
+    async def _acquire(self) -> None:
+        """
+        Take the GPU lock, refusing rather than queueing without limit.
+
+        Rejects immediately when the queue is already at depth, and gives up
+        after QUEUE_TIMEOUT_SECONDS otherwise.
+        """
+        if self._waiting >= MAX_INFLIGHT_REQUESTS:
+            logger.warning("Refusing request — %d already in flight", self._waiting)
+            raise ProviderOverloadedError(
+                f"Local provider is busy: {self._waiting} requests already in flight."
+            )
+
+        self._waiting += 1
+        try:
+            if self._waiting > 1 or self._lock.locked():
+                logger.info("Request queued — position %d", self._waiting)
+
+            # shield() so a timeout cannot cancel an acquisition that has
+            # already been granted, which would leave the lock held forever.
+            acquisition = asyncio.ensure_future(self._lock.acquire())
+            try:
+                await asyncio.wait_for(asyncio.shield(acquisition), timeout=QUEUE_TIMEOUT_SECONDS)
+            except asyncio.TimeoutError:
+                # The acquire is still pending; release it if it later succeeds.
+                acquisition.add_done_callback(
+                    lambda task: self._lock.release() if not task.cancelled() and not task.exception() else None
+                )
+                logger.warning("Request timed out after %ss waiting for the GPU", QUEUE_TIMEOUT_SECONDS)
+                raise ProviderOverloadedError(
+                    f"Timed out after {QUEUE_TIMEOUT_SECONDS}s waiting for the local provider."
+                )
+        finally:
+            self._waiting -= 1
+
     async def fetch_response(self, system_prompt: str, user_prompt: str, model: str) -> str:
-        async with self._lock:
-            self._load_model(model)
+        await self._acquire()
+        try:
+            # Both the load and the inference are synchronous and take tens of
+            # seconds. Run them on a worker thread: on the event loop they would
+            # freeze the whole server, including /health and the Groq provider,
+            # and would stop any asyncio timeout from ever firing.
+            await asyncio.to_thread(self._load_model, model)
 
             prompt = resolve_prompt(self._current_template, system_prompt, user_prompt)
 
             logger.info("Running local inference — model: %s", model)
             monitor.log_memory("before inference")
-            response = self._model._call(prompt)
+            response = await asyncio.to_thread(self._model._call, prompt)
             monitor.log_memory("after inference")
             logger.info("Local inference completed — model: %s", model)
 
             return response
+        finally:
+            self._lock.release()

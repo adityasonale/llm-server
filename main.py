@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 from server import get_response
+from providers.base import ProviderOverloadedError
 from utils.logger import get_logger
 from authentication.api_key import validate_api_key
 
@@ -46,6 +47,12 @@ async def generate(request: GenerateRequest, x_api_key: str = Header(...)):
         )
         logger.info("Request completed — user: %s, project: %s", entry["user"], entry["project"])
         return GenerateResponse(content=content, model=request.model, provider=request.provider)
+    except ProviderOverloadedError as e:
+        # The request is fine; the server cannot serve it right now.
+        logger.warning("Provider overloaded: %s", e)
+        raise HTTPException(
+            status_code=503, detail=str(e), headers={"Retry-After": str(e.retry_after)}
+        )
     except ValueError as e:
         logger.error("Bad request: %s", e)
         raise HTTPException(status_code=400, detail=str(e))

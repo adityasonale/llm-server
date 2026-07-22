@@ -75,7 +75,7 @@ Request flow: `main.py` (validate API key → validate body) → `server.py` (`P
 
 **Groq** (`providers/groq/`): `groq.py` is a thin blocking `requests` wrapper returning the raw OpenAI-shaped JSON (it also has an unused `speech_to_text` method); `services.py` adapts it to the ABC, logs token usage, and unwraps `choices[0].message.content`. The blocking call runs directly on the event loop. `fetch_response` accepts a `config` dict, but `services.py` only ever passes `model` through — so `temperature=0.1` and `max_tokens=500` are effectively hardcoded, as is the `llama-3.3-70b-versatile` fallback model that a missing `config` would select.
 
-**Local** (`providers/local/`): `CustomLLM` is a LangChain `LLM` subclass wrapping `transformers` with 4-bit quantization by default. `LocalService` holds **one model in memory at a time** and serializes everything behind an `asyncio.Lock`, so concurrent requests queue. `SystemMonitor` logs RAM/VRAM around each load, unload, and inference.
+**Local** (`providers/local/`): `CustomLLM` is a LangChain `LLM` subclass wrapping `transformers` with 4-bit quantization by default. `LocalService` holds **one model in memory at a time** and serializes everything behind an `asyncio.Lock` — see *Concurrency and admission control* below for how the resulting queue is bounded. `SystemMonitor` logs RAM/VRAM around each load, unload, and inference.
 
 **Load order matters and is deliberate.** `_load_model` resolves and capacity-checks the incoming model *before* unloading the resident one. The obvious ordering — unload, then load — means a request that cannot fit destroys a working model and leaves nothing serving. Do not "simplify" it back.
 
@@ -91,11 +91,24 @@ Two things about `CustomLLM` to keep in mind when changing this path: its genera
 
 Weight resolution is `_resolve_source()`'s job, not `CustomLLM`'s: it returns `(source, local_files_only)` and both are passed to the constructor, so `model_path` may be either a directory or a Hub repo id.
 
-### Next: concurrency (known constraint, not yet addressed)
+### Concurrency and admission control
 
-The `asyncio.Lock` gives the local provider a throughput of exactly **one request at a time**, and a 7B inference measured ~33s. A second client waits that long with no queue position, no timeout and no backpressure; ten queued requests means the last waits ~5 minutes. Decisions to make: reject-when-busy vs a depth-capped queue, a request timeout, and returning 503 with `Retry-After` rather than queueing indefinitely.
+Throughput is still **one inference at a time** — one GPU, one resident model, and the 7B fits with ~0.4GB to spare, so parallel generation would OOM. What is bounded is the waiting.
 
-Fold in the related fix when doing this: `_check_capacity()` raises `ValueError`, which `main.py` maps to **400**. A capacity refusal is not a malformed request — it should be **503**, so clients retry rather than give up.
+**Blocking work must stay off the event loop.** `_load_model` and `CustomLLM._call` are synchronous and take tens of seconds; `fetch_response` runs both through `asyncio.to_thread`. Calling them directly from the coroutine froze the entire process for the duration — `/health` stopped answering (failing the Docker healthcheck's 3s timeout), and Groq requests queued behind local ones. It also silently broke timeouts: an `asyncio` timer cannot fire while the loop is blocked, so any queueing built on top would have been decorative. Do not "simplify" the `to_thread` calls away.
+
+`_acquire()` caps work in flight at `MAX_INFLIGHT_REQUESTS = 3` — **the running request counts**, so that is one running plus two waiting, and at ~33s per inference the last accepted waits ~66s. Derive the constant from the latency you will accept: `depth ≈ acceptable_wait × throughput`. Beyond the cap, requests are refused immediately rather than queued. `QUEUE_TIMEOUT_SECONDS = 120` bounds the wait for anything that is admitted.
+
+Acquisition uses `asyncio.shield()` plus a done-callback: `wait_for` can otherwise cancel an acquire that has *already been granted*, leaking the lock permanently.
+
+**The two failure modes are deliberately different HTTP codes:**
+
+- **Saturation** → `ProviderOverloadedError` (`providers/base.py`) → **503** with `Retry-After`. Clears on its own, so retrying works.
+- **Model too large for the device** → `ValueError` → **400**. Never clears — the weights do not fit this GPU at any point in the future — so a `Retry-After` would send clients into a futile loop. It sits alongside "unknown model" as the same class of unserveable request.
+
+Verified with a stubbed model: the depth cap rejects in milliseconds, the timeout fires, the lock is released cleanly, and a 0.2s heartbeat keeps ticking through a blocking call that would previously have stopped it dead. **Not yet verified against a real CUDA generation** — the GIL is mostly released inside CUDA kernels, so the loop should stay free, but that is a prediction.
+
+Next step if more throughput is ever needed: continuous batching (vLLM-style), where many requests share the GPU and admission is governed by KV cache capacity rather than a mutex.
 
 Prompt formatting for local models is template-based (`providers/local/templates.py`): the `prompt_template` from `LOCAL_MODELS` selects one of `llama3`/`mistral`/`deepseek`/`qwen`. A new local model needs both an entry in `LOCAL_MODELS` and a matching template function.
 
