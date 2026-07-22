@@ -2,6 +2,7 @@ import asyncio
 import gc
 from pathlib import Path
 from providers.base import LLMProvider
+from providers.local.capacity import estimate_vram_gb
 from providers.local.local_llm_server import CustomLLM
 from providers.local.templates import resolve_prompt
 from settings import LOCAL_MODELS
@@ -47,6 +48,50 @@ class LocalService(LLMProvider):
         self._current_model: str | None = None
         self._current_template: str | None = None
         self._lock = asyncio.Lock()
+        # VRAM available to this process just before the resident model was
+        # loaded — i.e. what will be available again once it is unloaded.
+        self._available_vram_before_load: float | None = None
+
+    def _check_capacity(self, model: str, source: str, local_files_only: bool) -> None:
+        """
+        Refuse a load that cannot fit, before the resident model is disturbed.
+
+        Skips silently when the model cannot be sized (not yet downloaded) or
+        when there is no CUDA device, rather than blocking on missing data.
+        """
+        if not local_files_only:
+            logger.info("Skipping VRAM preflight for %s: weights are not on disk yet", model)
+            return
+
+        required = estimate_vram_gb(source)
+
+        if required is None:
+            logger.warning("Skipping VRAM preflight for %s: could not size the weights", model)
+            return
+
+        total, _ = monitor.get_vram()
+
+        if total == 0.0:
+            logger.info("Skipping VRAM preflight for %s: no CUDA device", model)
+            return
+
+        # A resident model's memory returns when it is unloaded, so compare
+        # against the reading taken before it was loaded, not what is free now.
+        if self._model is None or self._available_vram_before_load is None:
+            available = monitor.get_available_vram()
+        else:
+            available = self._available_vram_before_load
+
+        if required > available:
+            raise ValueError(
+                f"Model '{model}' needs ~{required:.2f}GB of VRAM but only {available:.2f}GB "
+                f"will be available on a {total:.2f}GB device. Refusing to load; "
+                f"the current model stays in memory."
+            )
+
+        logger.info(
+            "VRAM preflight passed for %s — needs ~%.2fGB, %.2fGB available", model, required, available
+        )
 
     def _load_model(self, model: str):
         config = LOCAL_MODELS.get(model)
@@ -57,8 +102,14 @@ class LocalService(LLMProvider):
             logger.info("Model already loaded: %s", model)
             return
 
+        # Resolve and size the incoming model BEFORE unloading the current one:
+        # a request that cannot fit must not cost us a working model.
+        source, local_files_only = _resolve_source(model, config)
+        self._check_capacity(model, source, local_files_only)
+
         if self._model is not None:
-            logger.info("Unloading current model: %s", self._current_model)
+            previous = self._current_model
+            logger.info("Unloading current model: %s", previous)
             monitor.log_memory("before unload")
             self._model.unload_model()
             self._model = None
@@ -67,7 +118,18 @@ class LocalService(LLMProvider):
             gc.collect()
             monitor.log_memory("after unload")
 
-        source, local_files_only = _resolve_source(model, config)
+            # Unloading should hand back what was taken. Measured as available
+            # to torch, not driver-free: torch keeps freed blocks reserved, so
+            # the driver still counts them as used while they are reusable.
+            available_after_unload = monitor.get_available_vram()
+            if (self._available_vram_before_load is not None
+                    and available_after_unload < self._available_vram_before_load - 0.25):
+                logger.warning(
+                    "VRAM not fully released after unloading %s — expected ~%.2fGB available, got %.2fGB",
+                    previous, self._available_vram_before_load, available_after_unload,
+                )
+
+        self._available_vram_before_load = monitor.get_available_vram()
 
         logger.info("Loading local model: %s", model)
         monitor.log_memory("before load")

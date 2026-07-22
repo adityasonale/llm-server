@@ -21,7 +21,20 @@ Note that `utils/system.py` imports `torch` unconditionally and is imported by `
 
 Run from the repo root. `providers/` and `utils/` have no `__init__.py` (they resolve as namespace packages) and every import is absolute from the root, and `utils/logger.py` opens `Path("logs")` relative to the CWD — starting uvicorn from elsewhere breaks both.
 
-`--reload` is available but costs you the resident local model on every save, since a reload is a fresh process. There is no test suite or linter config in the repo.
+`--reload` is available but costs you the resident local model on every save, since a reload is a fresh process. There is no test suite or linter config in the repo, and no test framework is installed — checks are written as stdlib `assert`s in a `__main__` block (see `providers/local/capacity.py`).
+
+## Measurement
+
+```bash
+python -m providers.local.capacity          # self-check + size a model, no GPU needed
+python benchmark.py --model minichat-1.5-3b # load time, latency, peak VRAM
+```
+
+`benchmark.py` appends one JSON object per measurement to `benchmarks/results.jsonl`, stamped with the git commit and GPU name. It is a deliberate, manually-run experiment, not monitoring — the point is comparing **the same model to itself** before and after a change (quantization, `context_length`, a dependency upgrade). Rows for different models in that file are separate runs, not a comparison.
+
+Peak memory comes from `torch.cuda.max_memory_allocated()` with `reset_peak_memory_stats()` rather than sampling around the call, since the `log_memory()` calls in `LocalService` cannot see a spike that occurs *during* generation.
+
+Two known flaws in the current harness: the `overhead_gb` column is computed from *reserved* memory, which the allocator keeps flat, so `peak_allocated_gb` minus the post-load `allocated_gb` is the honest signal; and generation length is not pinned, so a model that hits EOS early produces rows whose latencies are not comparable.
 
 ## Docker
 
@@ -62,7 +75,17 @@ Request flow: `main.py` (validate API key → validate body) → `server.py` (`P
 
 **Groq** (`providers/groq/`): `groq.py` is a thin blocking `requests` wrapper returning the raw OpenAI-shaped JSON (it also has an unused `speech_to_text` method); `services.py` adapts it to the ABC, logs token usage, and unwraps `choices[0].message.content`. The blocking call runs directly on the event loop. `fetch_response` accepts a `config` dict, but `services.py` only ever passes `model` through — so `temperature=0.1` and `max_tokens=500` are effectively hardcoded, as is the `llama-3.3-70b-versatile` fallback model that a missing `config` would select.
 
-**Local** (`providers/local/`): `CustomLLM` is a LangChain `LLM` subclass wrapping `transformers` with 4-bit quantization by default. `LocalService` holds **one model in memory at a time** — a request for a different model unloads the current one first — and serializes everything behind an `asyncio.Lock`, so concurrent requests queue. `SystemMonitor` logs RAM/VRAM around each load, unload, and inference.
+**Local** (`providers/local/`): `CustomLLM` is a LangChain `LLM` subclass wrapping `transformers` with 4-bit quantization by default. `LocalService` holds **one model in memory at a time** and serializes everything behind an `asyncio.Lock`, so concurrent requests queue. `SystemMonitor` logs RAM/VRAM around each load, unload, and inference.
+
+**Load order matters and is deliberate.** `_load_model` resolves and capacity-checks the incoming model *before* unloading the resident one. The obvious ordering — unload, then load — means a request that cannot fit destroys a working model and leaves nothing serving. Do not "simplify" it back.
+
+`_check_capacity()` compares `capacity.py`'s estimate against available VRAM, and raises `ValueError` (→ HTTP 400) without touching the resident model when it will not fit. Since a resident model's memory returns on unload, it compares against `_available_vram_before_load` — the reading taken before the current model loaded — rather than what is free right now, otherwise every swap would be wrongly refused.
+
+**VRAM must be measured as available-to-torch, not driver-free.** `torch.cuda.mem_get_info()` counts torch's reserved-but-unused cache as occupied. Measured on this machine: after unloading a 7B, the driver reported 4.04GB free while ~2.9GB more sat in torch's cache — and loading a 1.83GB model then moved driver usage by only 0.04GB, because it allocated straight out of that cache. `SystemMonitor.get_available_vram()` adds `reserved - allocated` back in; use it for any capacity decision. The post-unload leak warning uses the same measure, so if it fires now it means something real.
+
+`capacity.py::estimate_vram_gb()` reads safetensors headers (a few KB) — never the weights — and returns `None` when it cannot size a model, so callers skip the check rather than acting on a wrong number. It is a pure function with no torch import, deliberately: it must stay testable without a GPU.
+
+Measured accuracy: predicted weights were within 0.11GB (7B) and 0.04GB (3B) of actual. `_OVERHEAD_GB = 1.5` covers KV cache, activations and CUDA context; benchmarking showed overhead is **not** constant but grows ~0.0004GB per prompt token, reaching ~0.9GB near full context. A short-prompt measurement suggests 0.5 would do — that is the floor, not the ceiling, and lowering it will OOM on long prompts.
 
 Two things about `CustomLLM` to keep in mind when changing this path: its generation settings (`max_new_tokens=2048`, `temperature=0.7`, `context_length=4096`, …) are constructor defaults that nothing overrides, and `_call` catches generation failures and **returns** an error string instead of raising — so a failed local inference surfaces as HTTP 200 with the error text in `content`, not a 500.
 
