@@ -91,6 +91,12 @@ Two things about `CustomLLM` to keep in mind when changing this path: its genera
 
 Weight resolution is `_resolve_source()`'s job, not `CustomLLM`'s: it returns `(source, local_files_only)` and both are passed to the constructor, so `model_path` may be either a directory or a Hub repo id.
 
+### Next: concurrency (known constraint, not yet addressed)
+
+The `asyncio.Lock` gives the local provider a throughput of exactly **one request at a time**, and a 7B inference measured ~33s. A second client waits that long with no queue position, no timeout and no backpressure; ten queued requests means the last waits ~5 minutes. Decisions to make: reject-when-busy vs a depth-capped queue, a request timeout, and returning 503 with `Retry-After` rather than queueing indefinitely.
+
+Fold in the related fix when doing this: `_check_capacity()` raises `ValueError`, which `main.py` maps to **400**. A capacity refusal is not a malformed request — it should be **503**, so clients retry rather than give up.
+
 Prompt formatting for local models is template-based (`providers/local/templates.py`): the `prompt_template` from `LOCAL_MODELS` selects one of `llama3`/`mistral`/`deepseek`/`qwen`. A new local model needs both an entry in `LOCAL_MODELS` and a matching template function.
 
 ## Conventions
