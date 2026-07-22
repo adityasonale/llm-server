@@ -6,13 +6,18 @@ load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 API_KEYS: list[dict] = json.loads(os.getenv("API_KEYS", "[]"))
+# "path" is optional: if it exists on disk the weights are loaded from there,
+# otherwise "repo_id" is downloaded from the Hugging Face Hub. At least one of
+# the two must be set.
 LOCAL_MODELS: dict = {
     "distilled-qwen-7b": {
         "path": "D:/vs code/python/models/LLMs/DeepSeek-R1-Distilled-Qwen-7B",
+        "repo_id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
         "prompt_template": "qwen"
     },
     "minichat-1.5-3b": {
         "path": "D:/vs code/python/models/LLMs/MiniChat-1.5-3B",
+        "repo_id": "GeneZC/MiniChat-1.5-3B",
         "prompt_template": "mistral"
     },
 }

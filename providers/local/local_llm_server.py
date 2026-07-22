@@ -29,7 +29,8 @@ class CustomLLM(LLM):
     seed: int = 42
     verbose: bool = False
     quantize: str = '4-bit'  # Options: None, '4-bit', '8-bit'
-    
+    local_files_only: bool = True  # False lets model_path resolve as a HF Hub repo id
+
     # Internal state - using private attributes to avoid Pydantic validation
     _model: Any = None
     _tokenizer: Any = None
@@ -47,6 +48,7 @@ class CustomLLM(LLM):
         seed: int = 42,
         verbose: bool = False,
         quantize: str = '4-bit',
+        local_files_only: bool = True,
         **kwargs
     ):
         """Initialize the LLM with proper parameter passing to parent class."""
@@ -63,6 +65,7 @@ class CustomLLM(LLM):
             seed=seed,
             verbose=verbose,
             quantize=quantize,
+            local_files_only=local_files_only,
             **kwargs
         )
         
@@ -79,8 +82,8 @@ class CustomLLM(LLM):
         # Load tokenizer
         self._tokenizer = AutoTokenizer.from_pretrained(
             self.model_path,
-            trust_remote_code=True, 
-            local_files_only=True
+            trust_remote_code=True,
+            local_files_only=self.local_files_only
         )
         
         # Configure the tokenizer properly
@@ -117,7 +120,7 @@ class CustomLLM(LLM):
                 dtype=torch.float16,  # Using float16 for better memory efficiency
                 device_map="auto",          # Let the library handle device placement
                 trust_remote_code=False,     # Needed for some models
-                local_files_only=True,
+                local_files_only=self.local_files_only,
                 quantization_config=quantization_config
             )
             

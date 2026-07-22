@@ -31,14 +31,13 @@ docker compose logs -f          # follow output
 docker compose down             # stop
 ```
 
-`docker-compose.yml` injects `.env` via `env_file` (secrets are never baked into the image) and bind-mounts `./logs` so the rotating log survives the container. The image runs as non-root `appuser` and healthchecks `/health` using stdlib `urllib`, as the slim base has no `curl`.
+`docker-compose.yml` injects `.env` via `env_file` (secrets are never baked into the image), bind-mounts `./logs` so the rotating log survives the container, and keeps a named `hf-cache` volume at `/home/appuser/.cache/huggingface` so Hub downloads are not re-fetched on every recreate. The image runs as non-root `appuser` and healthchecks `/health` using stdlib `urllib`, as the slim base has no `curl`.
 
-Two caveats on the current image, both intentional and both worth fixing later:
+**Verified working:** the image builds at **1.33GB**, the container reports healthy, and `POST /generate` with `provider: "groq"` returns 200 end to end (auth, LangSmith tracing, token logging, and the `./logs` mount all confirmed).
 
-- It is several GB, because the eager-import chain above forces the whole torch stack in.
-- Torch inside it is the CPU build and no GPU passthrough is configured, so `provider: "local"` will technically run but at unusable speed. The container is for the Groq path; run local models on bare metal for now.
+The Dockerfile installs torch **from PyTorch's CPU index** (`--index-url https://download.pytorch.org/whl/cpu`) in its own layer, before the rest of the requirements. This is load-bearing: the default PyPI torch wheel bundles ~3GB of `nvidia-*` CUDA libraries that this container cannot use, and downloading them is what made the first build fail on a slow link. Keep it in a separate layer so a later failure does not re-fetch it, and keep the raised `--timeout`/`--retries`.
 
-**The image has not been built or run yet** — these files are committed untested.
+`provider: "local"` still does not work in the container, by design — there is no GPU passthrough, and 4-bit `BitsAndBytesConfig` expects CUDA, so a load would likely fail even after the weights resolve. Run local models on bare metal.
 
 ## Configuration
 
@@ -49,7 +48,9 @@ All config lives in `settings.py`, sourced from `.env` (gitignored):
 - `LANGCHAIN_*` — LangSmith tracing; `get_response` in `server.py` is decorated with `@traceable`.
 - `LOG_LEVEL` (read directly in `utils/logger.py`, default `INFO`) — controls console verbosity only; the rotating file handler at `logs/llm-server.log` always logs DEBUG.
 
-`LOCAL_MODELS` is hardcoded in `settings.py` and maps a model name to an **absolute filesystem path** plus a `prompt_template` key. These paths point outside the repo (`D:/vs code/python/models/LLMs/...`) and are machine-specific.
+`LOCAL_MODELS` is hardcoded in `settings.py` and maps a model name to `path` (optional), `repo_id` (optional) and `prompt_template`. `_resolve_source()` in `providers/local/services.py` prefers `path` when that directory actually exists and otherwise falls back to downloading `repo_id` from the Hugging Face Hub, flipping `local_files_only` accordingly; configuring neither raises `ValueError`. The `path` values point outside the repo (`D:/vs code/python/models/LLMs/...`) and are machine-specific, which is exactly why the Hub fallback exists.
+
+**The Hub fallback has never been exercised** — on the development machine the local paths always win, and triggering it means a 15GB download. To test it cheaply, add a tiny model (e.g. `hf-internal-testing/tiny-random-gpt2`) as a `repo_id`-only entry. Also note `MiniChat-1.5-3B`'s local `config.json` reports `_name_or_path: MiniChat-1.5-DPO-3B`, so the configured `repo_id` may not match the weights on disk.
 
 ## Architecture
 
@@ -64,6 +65,8 @@ Request flow: `main.py` (validate API key → validate body) → `server.py` (`P
 **Local** (`providers/local/`): `CustomLLM` is a LangChain `LLM` subclass wrapping `transformers` with 4-bit quantization by default. `LocalService` holds **one model in memory at a time** — a request for a different model unloads the current one first — and serializes everything behind an `asyncio.Lock`, so concurrent requests queue. `SystemMonitor` logs RAM/VRAM around each load, unload, and inference.
 
 Two things about `CustomLLM` to keep in mind when changing this path: its generation settings (`max_new_tokens=2048`, `temperature=0.7`, `context_length=4096`, …) are constructor defaults that nothing overrides, and `_call` catches generation failures and **returns** an error string instead of raising — so a failed local inference surfaces as HTTP 200 with the error text in `content`, not a 500.
+
+Weight resolution is `_resolve_source()`'s job, not `CustomLLM`'s: it returns `(source, local_files_only)` and both are passed to the constructor, so `model_path` may be either a directory or a Hub repo id.
 
 Prompt formatting for local models is template-based (`providers/local/templates.py`): the `prompt_template` from `LOCAL_MODELS` selects one of `llama3`/`mistral`/`deepseek`/`qwen`. A new local model needs both an entry in `LOCAL_MODELS` and a matching template function.
 
