@@ -12,9 +12,9 @@ Legend: ✅ done · 🔨 in progress · ⬜ planned
 ## Cloud GPU deploy (current track)
 - ✅ Stage 0 — GCP L4 quota approved (us-central1, no-zonal-redundancy)
 - ✅ Stage 1 — GPU container runs minichat on GPU locally (weights cached to volume via Hub download)
-- ⬜ Stage 2 — push image to Artifact Registry
-- ⬜ Stage 3 — Cloud Run GPU deploy: scale-to-zero, cold starts
-- ⬜ Stage 4 — weight-loading strategy (GCS volume cache vs baked-in)
+- ✅ Stage 2 — image pushed to Artifact Registry (us-central1)
+- ✅ Stage 3 — Cloud Run GPU deploy live, Groq path verified end-to-end (auth + serving)
+- ✅ Stage 4 — weights served from a mounted GCS bucket (Cloud Storage FUSE), no per-cold-start download; local model verified end-to-end on Cloud Run GPU
 
 ## Evaluation (the core LLMOps gap — not started)
 The missing "did this change make it *better*?" signal. Everything else only answers "is it still running?".
