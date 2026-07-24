@@ -16,3 +16,5 @@ accelerate==1.10.1
 bitsandbytes==0.47.0
 langchain-core==0.3.76
 psutil==5.9.8
+sentencepiece==0.2.0   # required by the Llama/Mistral tokenizers (minichat)
+protobuf==3.20.3        # sentencepiece tokenizer conversion

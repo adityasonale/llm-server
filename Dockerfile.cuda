@@ -1,0 +1,43 @@
+# GPU image for the local provider. The CPU image (Dockerfile) starts from
+# python:3.10-slim and installs CPU torch; this one needs the CUDA runtime so
+# torch and bitsandbytes can use the GPU. Run with `docker run --gpus all`.
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# The CUDA base has no Python. Install 3.10 (Ubuntu 22.04's default) and pip,
+# then make `python`/`pip` resolve to it.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && ln -sf /usr/bin/python3 /usr/bin/python \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt requirements-local.txt ./
+
+# CUDA torch (default PyPI wheel, bundles the nvidia libs) — here they are used,
+# unlike the CPU image. Own layer so a later failure does not re-download it.
+RUN pip install --no-cache-dir --timeout 120 --retries 10 torch==2.5.1
+
+RUN pip install --no-cache-dir --timeout 120 --retries 10 -r requirements-local.txt
+
+COPY . .
+
+# HF Hub downloads land here; mount a volume at this path so weights survive
+# container recreation instead of re-downloading (~12GB for minichat).
+ENV HF_HOME=/home/appuser/.cache/huggingface
+
+RUN useradd --create-home --uid 1000 appuser \
+    && mkdir -p /app/logs "$HF_HOME" \
+    && chown -R appuser:appuser /app "$HF_HOME"
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
