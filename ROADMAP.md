@@ -16,17 +16,18 @@ Legend: ✅ done · 🔨 in progress · ⬜ planned
 - ✅ Stage 3 — Cloud Run GPU deploy live, Groq path verified end-to-end (auth + serving)
 - ✅ Stage 4 — weights served from a mounted GCS bucket (Cloud Storage FUSE), no per-cold-start download; local model verified end-to-end on Cloud Run GPU
 
-## Evaluation (the core LLMOps gap — not started)
+## Evaluation (the core LLMOps gap)
 The missing "did this change make it *better*?" signal. Everything else only answers "is it still running?".
-- ⬜ Eval dataset — a small set of prompts with expected properties, versioned in the repo
-- ⬜ Eval harness — run the dataset through `/generate`, score each output, record per commit
-- ⬜ Scorers — start simple: exact-match, contains-keyword, JSON-valid, length bounds
-- ⬜ LLM-as-judge — use the Groq provider to grade the local model's output (correctness, relevance)
-- ⬜ Per-commit result storage (like the benchmark: one row per run, stamped with commit)
-- ⬜ Regression tests on outputs — fail if quality drops vs the last baseline
+- ✅ Eval dataset — `evals/dataset/*.jsonl`, versioned in the repo
+- ✅ Eval harness — `evals/run.py` runs the dataset through a provider, scores each output
+- ✅ Scorers — `evals/scorers.py`: contains, contains_ci, equals_ci, json_valid
+- ✅ Per-run result storage — one timestamped file per run in `evals/results/`, stamped with commit
+- ⬜ LLM-as-judge — use the Groq provider to grade open-ended output (correctness, relevance)
+- ⬜ Regression gate — fail if score drops vs the last baseline (what CI runs)
+- ⬜ Real dataset — swap hand-written cases for a GSM8K / TruthfulQA slice (same harness)
 - ⬜ Compare across axes — model (3B vs 7B), quantization (4-bit vs 8-bit), prompt A vs B
 - ⬜ Prompt / config versioning so a scored result maps to exactly what produced it
-- ⬜ (later) LangSmith datasets + evals integration
+- ⬜ (later, end of roadmap) Learn one industry eval tool for interview fluency — **LangSmith** (already wired via `@traceable`; datasets + evals + LLM-judge in a UI). Promptfoo as a second name to know.
 
 ## Model registry & experiment tracking (MLOps core)
 `LOCAL_MODELS` is already a primitive registry — formalize it.
@@ -45,6 +46,35 @@ The missing "did this change make it *better*?" signal. Everything else only ans
 - ⬜ Metrics endpoint — latency, tokens, VRAM, queue depth → Prometheus/Grafana
 - ⬜ Output-quality monitoring, not just liveness
 - ⬜ Cost tracking (tokens → $)
+
+---
+
+## Reference — production benchmarking & evaluation to build toward
+A menu of what real systems measure, to implement one at a time in this repo.
+
+### Performance benchmarks (speed / cost — extends `benchmark.py`)
+- ⬜ TTFT — time to first token (needs streaming first)
+- ⬜ TPOT — time per output token
+- ⬜ Throughput — tokens/sec and requests/sec at a fixed concurrency
+- ⬜ Load-test curve — latency vs concurrency, find the "knee" (`locust`/`k6`)
+- ⬜ Cost per 1M tokens / GPU-hour
+- Tools to try: `locust`, `k6`, vLLM benchmark scripts, NVIDIA `genai-perf`
+
+### Quality evaluations (extends `evals/`)
+Three tiers, increasing cost and fuzziness:
+- ⬜ **Deterministic** — exact-match, regex, JSON-schema (have the basics)
+- ⬜ **Model-graded** — LLM-as-judge for open-ended output; needs calibration
+- ⬜ **Task benchmarks** — standard datasets:
+  - GSM8K (math), HumanEval (code), MMLU (knowledge), TruthfulQA, MT-Bench (chat), RAGAS (RAG)
+- Tools to try: LangSmith (already wired), Promptfoo, DeepEval, EleutherAI `lm-eval-harness`, RAGAS
+
+### Pipelines (how these run in production)
+- ⬜ **Offline (CI, pre-deploy):** commit → run eval set + benchmark → gate on `score ≥ baseline AND latency ≤ SLO` → allow/block deploy
+- ⬜ **Online (post-deploy):** log live prompt/response/latency/cost → sample % → async LLM-judge → dashboards + alerts → feed failures back into the golden dataset
+- ⬜ Golden/regression dataset — curated, versioned, grows from real failures (the key asset)
+- ⬜ Baselines & thresholds — turn a score into a pass/fail gate
+- ⬜ Canary / shadow deploy — new model serves small % of traffic, compare before rollout
+- ⬜ Drift detection — input + output-quality shift over time
 
 ## Ordering note
 Focus is MLOps/LLMOps; RAG and fine-tuning are out of scope for this project.

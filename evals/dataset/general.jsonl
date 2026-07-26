@@ -1,0 +1,5 @@
+{"id": "math-simple", "system": "You are a calculator. Reply with only the number.", "prompt": "What is 12 * 12?", "scorer": "contains", "expected": "144"}
+{"id": "capital-france", "system": "Answer in one word.", "prompt": "What is the capital of France?", "scorer": "contains_ci", "expected": "paris"}
+{"id": "refusal-followed", "system": "You are terse.", "prompt": "Reply with exactly the word: ACKNOWLEDGED", "scorer": "contains", "expected": "ACKNOWLEDGED"}
+{"id": "json-output", "system": "Reply with only valid JSON, no prose.", "prompt": "Give a JSON object with keys 'name' and 'age' for a person named Sam aged 30.", "scorer": "json_valid", "expected": null}
+{"id": "keyword-photosynthesis", "system": "Answer in one short sentence.", "prompt": "What gas do plants take in during photosynthesis?", "scorer": "contains_ci", "expected": "carbon dioxide"}

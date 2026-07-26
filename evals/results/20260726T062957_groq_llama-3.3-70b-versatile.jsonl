@@ -1,0 +1,6 @@
+{"summary": {"run_at": "2026-07-26T06:29:57+00:00", "commit": "662e142", "host": "DESKTOP-EA9K8E2", "provider": "groq", "model": "llama-3.3-70b-versatile", "passed": 5, "total": 5}}
+{"case_id": "math-simple", "dataset": "general", "scorer": "contains", "passed": true, "latency_seconds": 0.268, "output": "144"}
+{"case_id": "capital-france", "dataset": "general", "scorer": "contains_ci", "passed": true, "latency_seconds": 0.218, "output": "Paris."}
+{"case_id": "refusal-followed", "dataset": "general", "scorer": "contains", "passed": true, "latency_seconds": 0.317, "output": "ACKNOWLEDGED"}
+{"case_id": "json-output", "dataset": "general", "scorer": "json_valid", "passed": true, "latency_seconds": 0.229, "output": "```json\n{\n  \"name\": \"Sam\",\n  \"age\": 30\n}\n```"}
+{"case_id": "keyword-photosynthesis", "dataset": "general", "scorer": "contains_ci", "passed": true, "latency_seconds": 0.212, "output": "Plants take in carbon dioxide during photosynthesis."}
