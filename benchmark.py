@@ -29,10 +29,16 @@ from settings import LOCAL_MODELS
 from utils.logger import get_logger
 from utils.system import SystemMonitor
 
+import mlflow
+
 logger = get_logger(__name__)
 monitor = SystemMonitor()
 
 RESULTS = Path("benchmarks/results.jsonl")
+
+print("Tracking URI:", mlflow.get_tracking_uri())
+
+mlflow.set_experiment("Local LLM Benchmarking")
 
 
 def _git_commit() -> str | None:
@@ -68,89 +74,114 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=1)
     args = parser.parse_args()
 
-    import torch
+    with mlflow.start_run():
 
-    if not torch.cuda.is_available():
-        print("No CUDA device — these numbers would be meaningless. Aborting.")
-        return
+        import torch
 
-    config = LOCAL_MODELS[args.model]
-    source, local_files_only = _resolve_source(args.model, config)
-    estimated = estimate_vram_gb(source)
+        if not torch.cuda.is_available():
+            print("No CUDA device — these numbers would be meaningless. Aborting.")
+            return
 
-    run = {
-        "run_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "commit": _git_commit(),
-        "host": platform.node(),
-        "gpu": torch.cuda.get_device_name(0),
-        "model": args.model,
-        "estimated_vram_gb": round(estimated, 3) if estimated else None,
-        "max_new_tokens": args.max_new_tokens,
-    }
+        mlflow.log_param("model", args.model)
+        mlflow.log_param("max_new_tokens", args.max_new_tokens)
+        mlflow.log_param("repeats", args.repeats)
+        mlflow.log_param("prompt_tokens", args.prompt_tokens)
 
-    print(f"\n{run['gpu']} | {args.model} | estimate {run['estimated_vram_gb']}GB\n")
+        config = LOCAL_MODELS[args.model]
+        source, local_files_only = _resolve_source(args.model, config)
+        estimated = estimate_vram_gb(source)
 
-    # --- cold start -------------------------------------------------------
-    torch.cuda.reset_peak_memory_stats()
-    service = LocalService()
+        run = {
+            "run_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "commit": _git_commit(),
+            "host": platform.node(),
+            "gpu": torch.cuda.get_device_name(0),
+            "model": args.model,
+            "estimated_vram_gb": round(estimated, 3) if estimated else None,
+            "max_new_tokens": args.max_new_tokens,
+        }
 
-    started = time.perf_counter()
-    service._load_model(args.model)
-    load_seconds = time.perf_counter() - started
+        print(f"\n{run['gpu']} | {args.model} | estimate {run['estimated_vram_gb']}GB\n")
 
-    weights_allocated = torch.cuda.memory_allocated() / 1024 ** 3
-    weights_reserved = torch.cuda.memory_reserved() / 1024 ** 3
+        # --- cold start -------------------------------------------------------
+        torch.cuda.reset_peak_memory_stats()
+        service = LocalService()
 
-    _record({**run, "phase": "load", "load_seconds": round(load_seconds, 2),
-             "allocated_gb": round(weights_allocated, 3),
-             "reserved_gb": round(weights_reserved, 3)})
+        started = time.perf_counter()
+        service._load_model(args.model)
+        load_seconds = time.perf_counter() - started
 
-    print(f"load: {load_seconds:.1f}s  allocated {weights_allocated:.2f}GB  "
-          f"reserved {weights_reserved:.2f}GB")
-    if estimated:
-        print(f"      estimate was {estimated:.2f}GB "
-              f"({estimated - weights_reserved:+.2f}GB vs reserved)\n")
+        mlflow.log_metric("load_seconds", load_seconds)
 
-    tokenizer = service._model._tokenizer
+        mlflow.log_param("model", args.model)
+        mlflow.log_param("max_new_tokens", args.max_new_tokens)
+        mlflow.log_param("repeats", args.repeats)
 
-    # --- inference across prompt sizes ------------------------------------
-    print(f"{'prompt':>8} {'gen':>5} {'latency':>9} {'tok/s':>7} "
-          f"{'peak alloc':>11} {'peak resv':>10} {'overhead':>9}")
+        mlflow.set_tag("git_commit", run["commit"])
+        mlflow.set_tag("gpu", run["gpu"])
+        mlflow.set_tag("host", run["host"])
 
-    for n_tokens in args.prompt_tokens:
-        for repeat in range(args.repeats):
-            prompt = resolve_prompt(
-                config["prompt_template"], "You are a helpful assistant.", _make_prompt(tokenizer, n_tokens)
-            )
-            actual_prompt_tokens = len(tokenizer(prompt, add_special_tokens=False).input_ids)
+        weights_allocated = torch.cuda.memory_allocated() / 1024 ** 3
+        weights_reserved = torch.cuda.memory_reserved() / 1024 ** 3
 
-            torch.cuda.reset_peak_memory_stats()
-            started = time.perf_counter()
-            output = service._model._call(prompt, max_new_tokens=args.max_new_tokens)
-            latency = time.perf_counter() - started
+        mlflow.log_metric("weights_allocated_gb", weights_allocated)
+        mlflow.log_metric("weights_reserved_gb", weights_reserved)
 
-            generated = len(tokenizer(output, add_special_tokens=False).input_ids)
-            peak_allocated = torch.cuda.max_memory_allocated() / 1024 ** 3
-            peak_reserved = torch.cuda.max_memory_reserved() / 1024 ** 3
-            # Everything above the weights themselves: KV cache, activations,
-            # logits. This is the number _OVERHEAD_GB is trying to approximate.
-            overhead = peak_reserved - weights_reserved
+        _record({**run, "phase": "load", "load_seconds": round(load_seconds, 2),
+                "allocated_gb": round(weights_allocated, 3),
+                "reserved_gb": round(weights_reserved, 3)})
 
-            _record({**run, "phase": "inference", "repeat": repeat,
-                     "requested_prompt_tokens": n_tokens,
-                     "prompt_tokens": actual_prompt_tokens,
-                     "generated_tokens": generated,
-                     "latency_seconds": round(latency, 3),
-                     "tokens_per_second": round(generated / latency, 2) if latency else None,
-                     "peak_allocated_gb": round(peak_allocated, 3),
-                     "peak_reserved_gb": round(peak_reserved, 3),
-                     "overhead_gb": round(overhead, 3)})
+        print(f"load: {load_seconds:.1f}s  allocated {weights_allocated:.2f}GB  "
+            f"reserved {weights_reserved:.2f}GB")
+        if estimated:
+            print(f"      estimate was {estimated:.2f}GB "
+                f"({estimated - weights_reserved:+.2f}GB vs reserved)\n")
 
-            print(f"{actual_prompt_tokens:>8} {generated:>5} {latency:>8.2f}s "
-                  f"{generated / latency if latency else 0:>7.1f} "
-                  f"{peak_allocated:>10.2f}G {peak_reserved:>9.2f}G {overhead:>8.2f}G")
+        tokenizer = service._model._tokenizer
 
-    print(f"\nappended to {RESULTS}")
+        # --- inference across prompt sizes ------------------------------------
+        print(f"{'prompt':>8} {'gen':>5} {'latency':>9} {'tok/s':>7} "
+            f"{'peak alloc':>11} {'peak resv':>10} {'overhead':>9}")
+
+        for n_tokens in args.prompt_tokens:
+            for repeat in range(args.repeats):
+                prompt = resolve_prompt(
+                    config["prompt_template"], "You are a helpful assistant.", _make_prompt(tokenizer, n_tokens)
+                )
+                actual_prompt_tokens = len(tokenizer(prompt, add_special_tokens=False).input_ids)
+
+                torch.cuda.reset_peak_memory_stats()
+                started = time.perf_counter()
+                output = service._model._call(prompt, max_new_tokens=args.max_new_tokens)
+                latency = time.perf_counter() - started
+
+                generated = len(tokenizer(output, add_special_tokens=False).input_ids)
+                peak_allocated = torch.cuda.max_memory_allocated() / 1024 ** 3
+                peak_reserved = torch.cuda.max_memory_reserved() / 1024 ** 3
+                # Everything above the weights themselves: KV cache, activations,
+                # logits. This is the number _OVERHEAD_GB is trying to approximate.
+                overhead = peak_reserved - weights_reserved
+
+                mlflow.log_metric("latency_seconds", latency, step=n_tokens)
+                mlflow.log_metric("tokens_per_second", generated / latency, step=n_tokens)
+                mlflow.log_metric("peak_reserved_gb", peak_reserved, step=n_tokens)
+                mlflow.log_metric("overhead_gb", overhead, step=n_tokens)
+
+                _record({**run, "phase": "inference", "repeat": repeat,
+                        "requested_prompt_tokens": n_tokens,
+                        "prompt_tokens": actual_prompt_tokens,
+                        "generated_tokens": generated,
+                        "latency_seconds": round(latency, 3),
+                        "tokens_per_second": round(generated / latency, 2) if latency else None,
+                        "peak_allocated_gb": round(peak_allocated, 3),
+                        "peak_reserved_gb": round(peak_reserved, 3),
+                        "overhead_gb": round(overhead, 3)})
+
+                print(f"{actual_prompt_tokens:>8} {generated:>5} {latency:>8.2f}s "
+                    f"{generated / latency if latency else 0:>7.1f} "
+                    f"{peak_allocated:>10.2f}G {peak_reserved:>9.2f}G {overhead:>8.2f}G")
+
+        print(f"\nappended to {RESULTS}")
 
 
 if __name__ == "__main__":
