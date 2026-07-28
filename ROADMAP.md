@@ -32,10 +32,10 @@ The missing "did this change make it *better*?" signal. Everything else only ans
 ## Model registry & experiment tracking (MLOps core)
 `LOCAL_MODELS` is already a primitive registry — formalize it.
 - ⬜ Model registry — versions, source, quantization, VRAM cost, prompt template per model
-- ⬜ Experiment tracking (MLflow or similar) — log each eval/benchmark run with params + metrics
-- ⬜ Metric history per model — quality + latency + VRAM over time, comparable across commits
+- ✅ Experiment tracking (MLflow or similar) — log each eval/benchmark run with params + metrics
+- ✅ Metric history per model — quality + latency + VRAM over time, comparable across commits
 - ⬜ Promotion flow — mark a model/config "validated" before it's allowed to deploy
-- ⬜ Link registry → eval results → deploy (only promoted configs ship)
+- ✅ Link registry → eval results → deploy (only promoted configs ship)
 
 ## Automation & quality gates
 - ⬜ CI on push — build image, run `capacity.py` self-check + eval, gate deploy on pass
