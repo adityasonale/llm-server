@@ -36,9 +36,11 @@ monitor = SystemMonitor()
 
 RESULTS = Path("benchmarks/results.jsonl")
 
-print("Tracking URI:", mlflow.get_tracking_uri())
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
 mlflow.set_experiment("Local LLM Benchmarking")
+
+print("Tracking URI:", mlflow.get_tracking_uri())
 
 
 def _git_commit() -> str | None:
@@ -76,6 +78,8 @@ def main() -> None:
 
     with mlflow.start_run():
 
+        mlflow.set_tag("mlflow.runName", f"{args.model}-{datetime.now().strftime('%Y%m%d-%H%M')}")
+
         import torch
 
         if not torch.cuda.is_available():
@@ -112,10 +116,6 @@ def main() -> None:
         load_seconds = time.perf_counter() - started
 
         mlflow.log_metric("load_seconds", load_seconds)
-
-        mlflow.log_param("model", args.model)
-        mlflow.log_param("max_new_tokens", args.max_new_tokens)
-        mlflow.log_param("repeats", args.repeats)
 
         mlflow.set_tag("git_commit", run["commit"])
         mlflow.set_tag("gpu", run["gpu"])
@@ -166,6 +166,7 @@ def main() -> None:
                 mlflow.log_metric("tokens_per_second", generated / latency, step=n_tokens)
                 mlflow.log_metric("peak_reserved_gb", peak_reserved, step=n_tokens)
                 mlflow.log_metric("overhead_gb", overhead, step=n_tokens)
+                mlflow.log_metric("memory_efficiency", generated / peak_reserved, step=n_tokens)
 
                 _record({**run, "phase": "inference", "repeat": repeat,
                         "requested_prompt_tokens": n_tokens,
@@ -181,6 +182,7 @@ def main() -> None:
                     f"{generated / latency if latency else 0:>7.1f} "
                     f"{peak_allocated:>10.2f}G {peak_reserved:>9.2f}G {overhead:>8.2f}G")
 
+        mlflow.log_artifact("benchmarks/results.jsonl")
         print(f"\nappended to {RESULTS}")
 
 
