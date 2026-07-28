@@ -25,6 +25,7 @@ import mlflow
 
 from evals.scorers import score
 from utils.logger import get_logger
+from registry.registry import ModelRegistry
 
 logger = get_logger(__name__)
 
@@ -62,7 +63,7 @@ def _load_cases() -> list[dict]:
 
 
 async def main() -> None:
-    with mlflow.start_run():
+    with mlflow.start_run() as run:
         parser = argparse.ArgumentParser(description=__doc__)
         parser.add_argument("--provider", default="groq")
         parser.add_argument("--model", default="llama-3.3-70b-versatile")
@@ -141,6 +142,24 @@ async def main() -> None:
         mlflow.log_metric("avg_latency", sum(r["latency_seconds"] for r in rows) / total)
 
         mlflow.log_artifact(str(out_path))
+
+        if passed / total >= 0.85:
+            registry = ModelRegistry(tracking_uri="sqlite:///mlflow.db")
+            version = registry.register(
+                model_name=f"{args.provider}-{args.model}",
+                python_model=None,
+                benchmark_run_id=None,
+                eval_run_id=run.info.run_id,
+                active_run_id=run.info.run_id,
+                metadata={
+                    "provider": args.provider,
+                    "model": args.model,
+                    "pass_rate": round(passed / total, 3),
+                }
+            )
+            print(f"Model registered as v{version} (eval passed {passed}/{total})")
+        else:
+            print(f"Eval score below threshold ({passed}/{total}), skipping registration.")
     
         print(f"\nscore: {passed}/{total} ({100 * passed / total:.0f}%)  -> {out_path}")
 
