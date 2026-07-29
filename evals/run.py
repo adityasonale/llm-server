@@ -67,6 +67,7 @@ async def main() -> None:
         parser = argparse.ArgumentParser(description=__doc__)
         parser.add_argument("--provider", default="groq")
         parser.add_argument("--model", default="llama-3.3-70b-versatile")
+        parser.add_argument("--benchmark-run-id", default=None)
         args = parser.parse_args()
 
         # Import the provider lazily so a Groq run never pulls in the local torch stack.
@@ -144,20 +145,23 @@ async def main() -> None:
         mlflow.log_artifact(str(out_path))
 
         if passed / total >= 0.85:
-            registry = ModelRegistry(tracking_uri="sqlite:///mlflow.db")
-            version = registry.register(
-                model_name=f"{args.provider}-{args.model}",
-                python_model=None,
-                benchmark_run_id=None,
-                eval_run_id=run.info.run_id,
-                active_run_id=run.info.run_id,
-                metadata={
-                    "provider": args.provider,
-                    "model": args.model,
-                    "pass_rate": round(passed / total, 3),
-                }
-            )
-            print(f"Model registered as v{version} (eval passed {passed}/{total})")
+            if not args.benchmark_run_id:
+                print("Skipping registration — no benchmark run ID provided. Run benchmark.py first.")
+            else:
+                registry = ModelRegistry(tracking_uri="sqlite:///mlflow.db")
+                version = registry.register(
+                    model_name=f"{args.provider}-{args.model}",
+                    python_model=None,
+                    benchmark_run_id=None,
+                    eval_run_id=run.info.run_id,
+                    active_run_id=run.info.run_id,
+                    metadata={
+                        "provider": args.provider,
+                        "model": args.model,
+                        "pass_rate": round(passed / total, 3),
+                    }
+                )
+                print(f"Model registered as v{version} (eval passed {passed}/{total})")
         else:
             print(f"Eval score below threshold ({passed}/{total}), skipping registration.")
     
