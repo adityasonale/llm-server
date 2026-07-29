@@ -76,7 +76,7 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=1)
     args = parser.parse_args()
 
-    with mlflow.start_run():
+    with mlflow.start_run() as run:
 
         mlflow.set_tag("mlflow.runName", f"{args.model}-{datetime.now().strftime('%Y%m%d-%H%M')}")
 
@@ -183,6 +183,8 @@ def main() -> None:
                     f"{peak_allocated:>10.2f}G {peak_reserved:>9.2f}G {overhead:>8.2f}G")
 
         mlflow.log_artifact("benchmarks/results.jsonl")
+        
+        print(f"\nBenchmark run ID: {run.info.run_id}")
         print(f"\nappended to {RESULTS}")
 
 
