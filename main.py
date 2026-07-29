@@ -44,6 +44,12 @@ async def generate(request: GenerateRequest, x_api_key: str = Header(...)):
             user_prompt=request.user_prompt,
             model=request.model,
             provider=request.provider,
+            langsmith_extra={
+                "metadata": {
+                    "user": entry["user"],
+                    "project": entry["project"],
+                }
+            },
         )
         logger.info("Request completed — user: %s, project: %s", entry["user"], entry["project"])
         return GenerateResponse(content=content, model=request.model, provider=request.provider)
