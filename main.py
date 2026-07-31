@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
-from server import get_response
+from router import get_response
 from providers.base import ProviderOverloadedError
 from utils.logger import get_logger
 from authentication.api_key import validate_api_key
