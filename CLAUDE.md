@@ -131,4 +131,5 @@ Verified with the real OpenAI SDK and LangChain `ChatOpenAI` (invoke, `bind_tool
 ## Conventions
 
 - Logging goes through `utils.logger.get_logger(__name__)`, which namespaces under `llm-server.*` with `propagate=False`. Use `%s` lazy formatting, not f-strings, in log calls.
-- `logs/llm-server.log` is tracked in git and shows up as modified after any run.
+- `logs/` is gitignored (it used to be tracked, which published a rejected API key in the log history). Never commit logs.
+- **Never log a secret.** Log `authentication.api_key.fingerprint(key)` (SHA-256 prefix + length) instead — it identifies repeated attempts without revealing the key. `python -m authentication.api_key` self-checks it.
