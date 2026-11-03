@@ -4,13 +4,12 @@ Model Registry — promotes validated models into the MLflow registry.
 Usage:
     registry = ModelRegistry(tracking_uri="sqlite:///mlflow.db")
     registry.register(
-        model_name="groq-llama-3.3-70b",
-        python_model=GroqModelWrapper(),
+        model_name="local-minichat-1.5-3b",
         benchmark_run_id="abc123",
         eval_run_id="def456",
-        metadata={"provider": "groq", "model": "llama-3.3-70b-versatile"}
+        metadata={"provider": "local", "model": "minichat-1.5-3b"}
     )
-    registry.promote("groq-llama-3.3-70b", version=1, alias="champion")
+    registry.promote("local-minichat-1.5-3b", version=1, alias="champion")
 """
 
 import mlflow
@@ -80,7 +79,7 @@ class ModelRegistry:
 
     def promote(self, model_name: str, version: str | int, alias: str) -> None:
         """
-        Assign an alias to a version. e.g. promote("groq-llama", 2, "champion")
+        Assign an alias to a version. e.g. promote("local-minichat-1.5-3b", 2, "champion")
         Moves the alias from whatever version it was on before.
         """
         self._client.set_registered_model_alias(model_name, alias, str(version))

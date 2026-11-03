@@ -1,10 +1,11 @@
 import asyncio
 import gc
+from collections.abc import Callable
 from pathlib import Path
 from providers.base import LLMProvider, ProviderOverloadedError
 from providers.local.capacity import estimate_vram_gb
 from providers.local.local_llm_server import CustomLLM
-from providers.local.templates import resolve_prompt
+from providers.local.templates import resolve_chat_prompt, resolve_prompt
 from settings import LOCAL_MODELS
 from utils.logger import get_logger
 from utils.system import SystemMonitor
@@ -188,23 +189,46 @@ class LocalService(LLMProvider):
         finally:
             self._waiting -= 1
 
-    async def fetch_response(self, system_prompt: str, user_prompt: str, model: str) -> str:
+    async def _generate(self, model: str, build_prompt: Callable[[str], str], **generation_kwargs) -> str:
+        """
+        Shared path for both endpoints: admission, load, render, infer.
+
+        `build_prompt` receives the resident model's template name, which is
+        only known once the model is loaded.
+        """
         await self._acquire()
         try:
             # Both the load and the inference are synchronous and take tens of
             # seconds. Run them on a worker thread: on the event loop they would
-            # freeze the whole server, including /health and the Groq provider,
+            # freeze the whole server, including /health and the llama-server path,
             # and would stop any asyncio timeout from ever firing.
             await asyncio.to_thread(self._load_model, model)
 
-            prompt = resolve_prompt(self._current_template, system_prompt, user_prompt)
+            prompt = build_prompt(self._current_template)
 
             logger.info("Running local inference — model: %s", model)
             monitor.log_memory("before inference")
-            response = await asyncio.to_thread(self._model._call, prompt)
+            response = await asyncio.to_thread(self._model._call, prompt, **generation_kwargs)
             monitor.log_memory("after inference")
             logger.info("Local inference completed — model: %s", model)
 
             return response
         finally:
             self._lock.release()
+
+    async def fetch_response(self, system_prompt: str, user_prompt: str, model: str) -> str:
+        return await self._generate(
+            model, lambda template: resolve_prompt(template, system_prompt, user_prompt)
+        )
+
+    async def chat(self, model: str, messages: list[dict], **generation_kwargs) -> str:
+        """
+        Multi-turn generation for /v1/chat/completions.
+
+        `messages` must already be plain {role, content} text turns — no tool
+        calls; the caller rejects those. `generation_kwargs` are CustomLLM._call
+        overrides: max_new_tokens, temperature, top_p, top_k, stop.
+        """
+        return await self._generate(
+            model, lambda template: resolve_chat_prompt(template, messages), **generation_kwargs
+        )

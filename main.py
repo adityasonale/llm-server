@@ -4,14 +4,27 @@ from router import get_response
 from providers.base import ProviderOverloadedError
 from utils.logger import get_logger
 from authentication.api_key import validate_api_key
+from contextlib import asynccontextmanager
+from chat import close_upstreams
+from openai_api import router as openai_router, register_error_handlers
 
 logger = get_logger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    yield
+    await close_upstreams()
+
 
 app = FastAPI(
     title="LLM Server",
     description="Personal LLM server.",
     version="1.0.0",
+    lifespan=lifespan,
 )
+app.include_router(openai_router)
+register_error_handlers(app)
 
 class GenerateRequest(BaseModel):
     system_prompt: str

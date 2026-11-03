@@ -1,14 +1,12 @@
 import time
 from langsmith import traceable
 from providers.base import LLMProvider
-from providers.groq.services import GroqService
 from providers.local.services import LocalService
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 PROVIDERS: dict[str, LLMProvider] = {
-    "groq": GroqService(),
     "local": LocalService(),
 }
 

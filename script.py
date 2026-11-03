@@ -3,7 +3,6 @@ Quick manual test client for the running server.
 
 Usage (server must be up on :8000):
     python script.py                              # default: minichat, local
-    python script.py --provider groq --model llama-3.3-70b-versatile
     python script.py --prompt "Explain gravity in one line."
 
 Reads the API key from .env (API_KEYS) so it is never hardcoded here.

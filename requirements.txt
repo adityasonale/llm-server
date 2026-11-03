@@ -1,10 +1,11 @@
-# Core server — everything the hosted (Groq) path needs.
+# Core server — the gateway and the llama-server pass-through.
 # This is what the Docker image installs.
 fastapi==0.117.1
 uvicorn==0.37.0
 pydantic==2.11.9
 python-dotenv==1.1.1
 requests==2.32.5
+httpx==0.28.1
 
 # Tracing
 langsmith==0.4.27

@@ -4,12 +4,11 @@ and records results per commit. Answers "is it correct?", the counterpart to
 benchmark.py's "is it fast?".
 
 Run from the repo root:
-    python -m evals.run  # Groq, default model
-    python -m evals.run --provider groq --model llama-3.3-70b-versatile
-    python -m evals.run --provider local --model minichat-1.5-3b
+    python -m evals.run  # local provider, minichat-1.5-3b
+    python -m evals.run --provider local --model distilled-qwen-7b
 
-Uses the Groq provider directly (no torch, no running server needed). The local
-provider works too but pulls in the heavy stack.
+Uses the local provider directly (no running server needed), so it needs the
+torch stack from requirements-local.txt.
 """
 
 import argparse
@@ -65,16 +64,12 @@ def _load_cases() -> list[dict]:
 async def main() -> None:
     with mlflow.start_run() as run:
         parser = argparse.ArgumentParser(description=__doc__)
-        parser.add_argument("--provider", default="groq")
-        parser.add_argument("--model", default="llama-3.3-70b-versatile")
+        parser.add_argument("--provider", default="local")
+        parser.add_argument("--model", default="minichat-1.5-3b")
         parser.add_argument("--benchmark-run-id", default=None)
         args = parser.parse_args()
 
-        # Import the provider lazily so a Groq run never pulls in the local torch stack.
-        if args.provider == "groq":
-            from providers.groq.services import GroqService
-            service = GroqService()
-        elif args.provider == "local":
+        if args.provider == "local":
             from providers.local.services import LocalService
             service = LocalService()
         else:
