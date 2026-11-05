@@ -6,10 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A self-hosted FastAPI gateway for **local models**. There are no hosted providers (Groq was removed; it is in git history). Two endpoints:
 
-- **`POST /v1/chat/completions`** — the main one. OpenAI-compatible: `messages`, `tools`, `stream` and sampling params, so any OpenAI client works (OpenAI SDK, LangChain `ChatOpenAI(base_url=...)`, curl). The provider is a prefix on `model`: `llamacpp/<model>` or `local/<model>` (see *OpenAI-compatible endpoint* below). Auth is `Authorization: Bearer <key>` or `X-API-Key`. Errors are OpenAI-shaped: `{"error": {"message", "type", "code"}}`.
+- **`POST /v1/chat/completions`** — the main one. OpenAI-compatible: `messages`, `tools`, `stream` and sampling params, so any OpenAI client works (OpenAI SDK, LangChain `ChatOpenAI(base_url=...)`, curl). `model` is a name from `models.yaml`, served by a backend plugin that llm-server starts itself (see *Model manager and backend plugins*). The older `llamacpp/<model>` and `local/<model>` prefixes still work (see *OpenAI-compatible endpoint*). Auth is `Authorization: Bearer <key>` or `X-API-Key`. Errors are OpenAI-shaped: `{"error": {"message", "type", "code"}}`.
 - **`POST /generate`** — the original, kept for existing callers. Body `{system_prompt, user_prompt, model, provider}`, response `{content, model, provider}`, `X-API-Key` header only, no generation parameters. Only `provider: "local"` exists now.
 
-`GET /health` is unauthenticated and returns `{"status": "ok"}`.
+`GET /v1/models` (authenticated) lists the `models.yaml` entries with each one's detected format, the backend it would use on this machine, and whether it is loaded. `GET /health` is unauthenticated and returns `{"status": "ok"}`.
 
 ## Running
 
@@ -29,6 +29,7 @@ Run from the repo root. `providers/` and `utils/` have no `__init__.py` (they re
 ## Measurement
 
 ```bash
+python -m model_manager                     # self-check: formats, plugin selection, swaps (no models needed)
 python -m providers.local.capacity          # self-check + size a model, no GPU needed
 python benchmark.py --model minichat-1.5-3b # load time, latency, peak VRAM
 ```
@@ -65,6 +66,8 @@ All config lives in `settings.py`, sourced from `.env` (gitignored):
 - `LANGCHAIN_*` — LangSmith tracing; `get_response` in `router.py` and non-streaming `chat_completion` in `chat.py` are decorated with `@traceable`, and both endpoints tag each trace with the API key's `user` and `project` via `langsmith_extra` metadata. Streaming requests are not traced.
 - `LOG_LEVEL` (read directly in `utils/logger.py`, default `INFO`) — controls console verbosity only; the rotating file handler at `logs/llm-server.log` always logs DEBUG.
 
+`models.yaml` (gitignored, per machine; template in `models.example.yaml`; path overridable with `MODELS_FILE`) is the model registry for plain model names: `models.<name>.path` plus optional `args`, `defaults`, `backend`, `port`, `startup_timeout` and plugin-specific keys; `backends.<plugin>` holds machine settings such as the llama-server `binary`; `plugins:` lists extra plugins as `module:Class`. It is re-read whenever its mtime changes, so adding a model needs no restart.
+
 `LOCAL_MODELS` is hardcoded in `settings.py` and maps a model name to `path` (optional), `repo_id` (optional) and `prompt_template`. `_resolve_source()` in `providers/local/services.py` prefers `path` when that directory actually exists and otherwise falls back to downloading `repo_id` from the Hugging Face Hub, flipping `local_files_only` accordingly; configuring neither raises `ValueError`. The `path` values point outside the repo (`D:/vs code/python/models/LLMs/...`) and are machine-specific, which is exactly why the Hub fallback exists.
 
 **The Hub fallback has never been exercised** — on the development machine the local paths always win, and triggering it means a 15GB download. To test it cheaply, add a tiny model (e.g. `hf-internal-testing/tiny-random-gpt2`) as a `repo_id`-only entry. Also note `MiniChat-1.5-3B`'s local `config.json` reports `_name_or_path: MiniChat-1.5-DPO-3B`, so the configured `repo_id` may not match the weights on disk.
@@ -95,6 +98,18 @@ Two things about `CustomLLM` to keep in mind when changing this path: its genera
 
 Weight resolution is `_resolve_source()`'s job, not `CustomLLM`'s: it returns `(source, local_files_only)` and both are passed to the constructor, so `model_path` may be either a directory or a Hub repo id.
 
+### Model manager and backend plugins
+
+`model_manager.py::MANAGER` serves `models.yaml` names. Per request it runs `backends/formats.py::detect_format(path)` (`gguf` = a .gguf file or a folder holding one, split files via the first shard, `mmproj*` ignored; `mlx` = a folder whose `config.json` has a top-level `quantization` with `bits`; `hf` = `config.json` + `*.safetensors`/`*.bin`), then `backends/plugins.py::select_backend()`: a pinned `backend:` wins (and must suit the format and hardware, or it is a 400); otherwise the highest-`priority` plugin that handles the format and whose `unavailable_reason(hw, settings)` is `None`. Built-ins: `llamacpp` 100 (gguf), `mlx` 90 (mlx, hf; Apple Silicon + `mlx-lm`), `vllm` 80 (hf; Linux + NVIDIA + `vllm`), `transformers` 10 (hf; in-process fallback). `backends/hardware.py` detects Apple Silicon / NVIDIA VRAM (via `nvidia-smi`, never torch) / RAM once.
+
+A plugin is a `backends/base.py::Backend` subclass; a fresh instance per load holds that load's state. Server plugins subclass `backends/server.py::ServerBackend`, which launches the process with `subprocess.Popen` (not asyncio subprocesses: those need the Proactor loop on Windows, and the NVIDIA laptop is Windows), logs to `logs/backends/<model>.log`, polls `health_path` until 200, then forwards through an `OpenAICompatibleProvider`, so tools, streaming and error mapping are the same as the `llamacpp/` pass-through. A process that exits during load → `UpstreamError` 502 with the log tail; never healthy within `startup_timeout` → 504. `TransformersBackend` registers the model on the shared `LocalService` (`register()`) and reuses its lock and queue; `stop()` calls `LocalService.unload()`.
+
+**One resident model.** `acquire(name)` returns the running model and counts it in use; every acquire is paired with `release()` (for streams, in the relay's `finally`, so a swap cannot stop a model mid-answer). Requests for the resident model run concurrently (the backend queues them). A different model sets `_swapping`, which holds off new requests, waits up to `DRAIN_TIMEOUT_SECONDS = 120` for in-flight ones (→ `ProviderOverloadedError` 503), then loads outside the condition lock. The same load-order rule as `LocalService`: `estimate_gb` vs `budget_gb` (coarse: file size + 1GB vs 75% of unified memory on Apple Silicon, VRAM + half of RAM for llama.cpp on CUDA, VRAM for vLLM) is checked **before** the resident model is stopped → `ValueError` 400. A failed start leaves nothing resident; the next request retries. An entry whose `models.yaml` values change is restarted on its next request (`ModelSpec` equality).
+
+Request bodies get the entry's `defaults` filled in under the client's values; `ServerBackend` replaces `model` with what the server expects (`default_model` for mlx_lm.server, which otherwise loads whatever `model` names). Server backends live in their own process group on POSIX, so Ctrl+C on uvicorn reaches only llm-server, whose lifespan (`close_upstreams()` → `MANAGER.shutdown()`) stops them. A hard kill of llm-server leaves the backend running.
+
+**Verified** on the M4 Air with real Bonsai (`bonsai-27b` entry, PrismML llama-server): `/v1/models`, cold start on the first request (~6s to healthy), plain completion, a tool call via the `llamacpp/bonsai-27b` alias, streaming, unknown-name 400, and llama-server stopped on shutdown. `python -m model_manager` covers swaps, drain, the size refusal and failed starts with a fake plugin. **Not verified:** the MLX plugin (`mlx-lm` not installed), the vLLM plugin (no CUDA Linux machine), the transformers plugin through the manager, and the tokenizer chat-template path.
+
 ### Concurrency and admission control
 
 Throughput is still **one inference at a time** — one GPU, one resident model, and the 7B fits with ~0.4GB to spare, so parallel generation would OOM. What is bounded is the waiting.
@@ -114,13 +129,13 @@ Verified with a stubbed model: the depth cap rejects in milliseconds, the timeou
 
 Next step if more throughput is ever needed: continuous batching (vLLM-style), where many requests share the GPU and admission is governed by KV cache capacity rather than a mutex.
 
-Prompt formatting for local models is template-based (`providers/local/templates.py`): the `prompt_template` from `LOCAL_MODELS` selects one of `llama3`/`mistral`/`deepseek`/`qwen`. A new local model needs both an entry in `LOCAL_MODELS` and a matching template function.
+Prompt formatting for local models is template-based (`providers/local/templates.py`): the `prompt_template` from `LOCAL_MODELS` selects one of `llama3`/`mistral`/`deepseek`/`qwen`. A model with no `prompt_template` (allowed for `models.yaml` entries on the transformers plugin) is rendered with the tokenizer's own `apply_chat_template`; a tokenizer without one is a 400 asking for `prompt_template`.
 
 ### OpenAI-compatible endpoint
 
-`parse_model()` in `chat.py` splits `model` on the **first** slash only: `llamacpp/Qwen/Qwen3-8B-GGUF` → provider `llamacpp`, model `Qwen/Qwen3-8B-GGUF`, because upstream model ids contain slashes. No prefix, or an unknown prefix, is a 400 listing the providers.
+`parse_model()` in `chat.py` first checks `models.yaml`: an exact name, or `llamacpp/<name>` where `<name>` is registered (an alias so clients like Karen, configured with `llamacpp/bonsai-27b`, need no change), goes to the model manager. Otherwise it splits `model` on the **first** slash only: `llamacpp/Qwen/Qwen3-8B-GGUF` → provider `llamacpp`, model `Qwen/Qwen3-8B-GGUF`, because upstream model ids contain slashes. No prefix, or an unknown prefix, is a 400 listing the providers.
 
-**`llamacpp/` is the main path for local models.** `providers/openai_compatible.py::OpenAICompatibleProvider` forwards the body **untouched apart from `model`** — `ChatCompletionRequest` declares only `model`/`messages`/`stream` and uses `extra="allow"`, so `tools`, `tool_choice`, `response_format`, `stream_options` and non-OpenAI params like `top_k` all reach llama-server. Tool calling and real token streaming are whatever the upstream supports. Responses (JSON and SSE bytes) are relayed as-is, so `model` in the response is the upstream's name, not the prefixed one. llm-server does **not** start or manage llama-server; run it separately on `LLAMACPP_BASE_URL`.
+**`llamacpp/` is the main path for local models.** `providers/openai_compatible.py::OpenAICompatibleProvider` forwards the body **untouched apart from `model`** — `ChatCompletionRequest` declares only `model`/`messages`/`stream` and uses `extra="allow"`, so `tools`, `tool_choice`, `response_format`, `stream_options` and non-OpenAI params like `top_k` all reach llama-server. Tool calling and real token streaming are whatever the upstream supports. Responses (JSON and SSE bytes) are relayed as-is, so `model` in the response is the upstream's name, not the prefixed one. This unmanaged path does **not** start llama-server; run it separately on `LLAMACPP_BASE_URL`. Register the model in `models.yaml` to have llm-server manage it instead.
 
 Upstream error mapping: upstream 4xx keeps its status and its OpenAI-shaped body is forwarded verbatim (with `Retry-After` on a 429); upstream 5xx → 502; unreachable → 502; timeout → 504. For `stream: true` the upstream request is sent **before** the `StreamingResponse` is returned, so an upstream error is still a real HTTP error rather than a 200 whose stream breaks off — keep that ordering. The `httpx.AsyncClient` per upstream is created lazily (provider `__init__` must stay cheap) and closed in `main.py`'s lifespan.
 

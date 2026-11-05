@@ -1,8 +1,13 @@
 """
 Dispatch for the OpenAI-compatible /v1/chat/completions endpoint.
 
-The provider is chosen by a prefix on the model name, split on the FIRST slash
-only, because upstream model ids contain slashes of their own:
+A plain model name registered in models.yaml goes to the model manager, which
+starts the right backend plugin for that model's format and this machine (see
+model_manager.py). `llamacpp/<name>` is accepted as an alias for a registered
+`<name>`, so clients written against the old prefix keep working.
+
+Otherwise the provider is chosen by a prefix on the model name, split on the
+FIRST slash only, because upstream model ids contain slashes of their own:
 
     llamacpp/qwen3-8b                 -> llamacpp, "qwen3-8b"
     llamacpp/Qwen/Qwen3-8B-GGUF       -> llamacpp, "Qwen/Qwen3-8B-GGUF"
@@ -21,6 +26,7 @@ from collections.abc import AsyncIterator
 
 from langsmith import traceable
 
+from model_manager import MANAGER
 from providers.openai_compatible import OpenAICompatibleProvider
 from router import PROVIDERS
 from settings import OPENAI_COMPATIBLE_UPSTREAMS, UPSTREAM_TIMEOUT_SECONDS
@@ -39,13 +45,23 @@ LOCAL = PROVIDERS["local"]
 
 AVAILABLE_PROVIDERS = sorted([*UPSTREAMS, "local"])
 
+# Pseudo-provider for models served by the model manager.
+MANAGED = "managed"
+# Prefixes that may name a models.yaml entry, for clients that predate it.
+_MANAGED_ALIASES = ("llamacpp",)
+
 
 def parse_model(model: str) -> tuple[str, str]:
+    if MANAGER.has(model):
+        return MANAGED, model
+
     provider, sep, name = model.partition("/")
+    if provider in _MANAGED_ALIASES and MANAGER.has(name):
+        return MANAGED, name
     if not sep or not name:
         raise ValueError(
-            f"Model '{model}' has no provider prefix. Use '<provider>/<model>', "
-            f"e.g. 'llamacpp/qwen3-8b' or 'local/minichat-1.5-3b'. Providers: {AVAILABLE_PROVIDERS}"
+            f"Unknown model '{model}'. Registered models: {MANAGER.names()}. "
+            f"Or use '<provider>/<model>' with a provider from {AVAILABLE_PROVIDERS}."
         )
     if provider not in UPSTREAMS and provider != "local":
         raise ValueError(f"Unknown provider: '{provider}'. Available: {AVAILABLE_PROVIDERS}")
@@ -55,6 +71,37 @@ def parse_model(model: str) -> tuple[str, str]:
 async def close_upstreams() -> None:
     for upstream in UPSTREAMS.values():
         await upstream.aclose()
+    await MANAGER.shutdown()
+
+
+async def _managed_completion(name: str, body: dict) -> dict:
+    resident = await MANAGER.acquire(name)
+    try:
+        body = {**MANAGER.request_defaults(resident.spec), **body}
+        return await resident.backend.chat_completion(body)
+    finally:
+        await MANAGER.release()
+
+
+async def _managed_stream(name: str, body: dict) -> AsyncIterator[bytes]:
+    resident = await MANAGER.acquire(name)
+    try:
+        body = {**MANAGER.request_defaults(resident.spec), **body}
+        stream = await resident.backend.open_stream(body)
+    except BaseException:
+        await MANAGER.release()
+        raise
+
+    async def relay() -> AsyncIterator[bytes]:
+        # The model counts as in use until the stream ends or the client
+        # disconnects, so a swap cannot stop it mid-answer.
+        try:
+            async for chunk in stream:
+                yield chunk
+        finally:
+            await MANAGER.release()
+
+    return relay()
 
 
 def _log_usage(provider: str, model: str, response: dict, elapsed: float) -> None:
@@ -70,7 +117,9 @@ async def chat_completion(body: dict) -> dict:
     provider, model = parse_model(body["model"])
     start = time.perf_counter()
 
-    if provider == "local":
+    if provider == MANAGED:
+        response = await _managed_completion(model, body)
+    elif provider == "local":
         messages, generation_kwargs = _local_request(body)
         text = await LOCAL.chat(model, messages, **generation_kwargs)
         response = _local_completion(body["model"], text)
@@ -88,6 +137,9 @@ async def chat_completion_stream(body: dict) -> AsyncIterator[bytes]:
     """
     provider, model = parse_model(body["model"])
     logger.info("Streaming chat completion — provider: %s, model: %s", provider, model)
+
+    if provider == MANAGED:
+        return await _managed_stream(model, body)
 
     if provider == "local":
         # transformers generation here is not incremental, so the whole answer

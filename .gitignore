@@ -9,3 +9,6 @@ dist/
 env.yml
 # Runtime logs — never commit (they can contain request data)
 logs/
+
+# Per-machine model registry (paths differ per machine); see models.example.yaml
+models.yaml

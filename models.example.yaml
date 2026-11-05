@@ -1,0 +1,47 @@
+# Model registry for llm-server. Copy to models.yaml (gitignored: paths are
+# per machine) and edit. Changes are picked up on the next request; no restart.
+#
+# Clients ask for a model by its name here:  model="bonsai-27b"
+# ("llamacpp/bonsai-27b" also works, for clients written before this file).
+#
+# The format is detected from `path`, and a backend plugin is chosen for that
+# format on this machine (see backends/plugins.py):
+#   .gguf file, or a folder holding one          -> llamacpp  (llama-server)
+#   MLX folder (config.json has "quantization")  -> mlx       (Apple Silicon)
+#   Hugging Face folder (config.json + weights)  -> mlx on Apple Silicon,
+#                                                   vllm on Linux + NVIDIA,
+#                                                   else transformers (in-process, no tool calls)
+
+# Machine-specific settings for each backend plugin.
+backends:
+  llamacpp:
+    binary: ~/llama.cpp/build/bin/llama-server   # omit to use llama-server from PATH
+  # mlx:
+  #   python: /path/to/python-with-mlx-lm        # default: the interpreter running llm-server
+  # vllm:
+  #   python: /path/to/python-with-vllm
+
+# Extra plugins, as "module.path:ClassName" (subclasses of backends.base.Backend).
+# A plugin with the same name as a built-in replaces it.
+plugins: []
+
+models:
+  qwen3.5-9b:
+    path: ~/models/Qwen3.5-9B-Q4_K_M.gguf
+    # Everything below is optional.
+    args: ["-c", "16384"]            # extra command-line args for the backend server
+    defaults:                        # sampling defaults; values in a request win
+      temperature: 0.7
+      top_p: 0.8
+    # backend: llamacpp              # pin a plugin instead of choosing automatically
+    # port: 8089                     # fixed port; default is a free one
+    # startup_timeout: 300           # seconds to wait for the backend to become healthy
+
+  qwen3-4b-mlx:
+    path: ~/models/Qwen3-4B-4bit     # MLX folder from mlx-community
+
+  minichat-hf:
+    path: ~/models/MiniChat-1.5-3B   # Hugging Face folder
+    # transformers-backend options:
+    # prompt_template: mistral       # default: the tokenizer's own chat template
+    # quantize: 4-bit                # default: 4-bit on CUDA, none elsewhere

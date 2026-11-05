@@ -83,6 +83,16 @@ class ChatCompletionRequest(BaseModel):
     stream: bool = False
 
 
+@router.get("/models")
+async def list_models(entry: dict = Depends(require_api_key)):
+    """Models registered in models.yaml, with the format and backend each would use on this machine."""
+    from model_manager import MANAGER
+    try:
+        return {"object": "list", "data": MANAGER.describe()}
+    except ValueError as e:
+        raise OpenAIError(500, str(e), "server_error")
+
+
 @router.post("/chat/completions")
 async def create_chat_completion(request: ChatCompletionRequest, entry: dict = Depends(require_api_key)):
     body = request.model_dump()

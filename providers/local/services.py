@@ -62,6 +62,13 @@ class LocalService(LLMProvider):
         self._waiting = 0
         # VRAM available to this process just before the resident model was loaded — i.e. what will be available again once it is unloaded.
         self._available_vram_before_load: float | None = None
+        # Models registered at runtime by the transformers backend plugin
+        # (models.yaml), alongside the hardcoded LOCAL_MODELS.
+        self._registered: dict[str, dict] = {}
+
+    def register(self, model: str, config: dict) -> None:
+        """Make a models.yaml entry loadable: {"path", "prompt_template"?, "quantize"?}."""
+        self._registered[model] = config
 
     def _check_capacity(self, model: str, source: str, local_files_only: bool) -> None:
         """
@@ -109,9 +116,9 @@ class LocalService(LLMProvider):
         )
 
     def _load_model(self, model: str):
-        config = LOCAL_MODELS.get(model)
+        config = LOCAL_MODELS.get(model) or self._registered.get(model)
         if config is None:
-            raise ValueError(f"Unknown local model: '{model}'. Available: {list(LOCAL_MODELS.keys())}")
+            raise ValueError(f"Unknown local model: '{model}'. Available: {[*LOCAL_MODELS, *self._registered]}")
 
         if self._current_model == model:
             logger.info("Model already loaded: %s", model)
@@ -124,14 +131,7 @@ class LocalService(LLMProvider):
 
         if self._model is not None:
             previous = self._current_model
-            logger.info("Unloading current model: %s", previous)
-            monitor.log_memory("before unload")
-            self._model.unload_model()
-            self._model = None
-            self._current_model = None
-            self._current_template = None
-            gc.collect()
-            monitor.log_memory("after unload")
+            self._unload_model()
 
             # Unloading should hand back what was taken. Measured as available
             # to torch, not driver-free: torch keeps freed blocks reserved, so
@@ -148,11 +148,44 @@ class LocalService(LLMProvider):
 
         logger.info("Loading local model: %s", model)
         monitor.log_memory("before load")
-        self._model = CustomLLM(model_path=source, local_files_only=local_files_only)
+        self._model = CustomLLM(
+            model_path=source, local_files_only=local_files_only, quantize=config.get("quantize", "4-bit")
+        )
         self._current_model = model
-        self._current_template = config["prompt_template"]
+        # None = use the tokenizer's own chat template (see _render_messages).
+        self._current_template = config.get("prompt_template")
         monitor.log_memory("after load")
         logger.info("Model loaded successfully: %s", model)
+
+    def _unload_model(self) -> None:
+        logger.info("Unloading current model: %s", self._current_model)
+        monitor.log_memory("before unload")
+        self._model.unload_model()
+        self._model = None
+        self._current_model = None
+        self._current_template = None
+        gc.collect()
+        monitor.log_memory("after unload")
+
+    async def unload(self) -> None:
+        """Free the resident model, e.g. when the model manager swaps to another backend."""
+        await self._acquire()
+        try:
+            if self._model is not None:
+                await asyncio.to_thread(self._unload_model)
+        finally:
+            self._lock.release()
+
+    def _render_messages(self, template: str | None, messages: list[dict]) -> str:
+        if template is not None:
+            return resolve_chat_prompt(template, messages)
+        tokenizer = self._model._tokenizer
+        if not getattr(tokenizer, "chat_template", None):
+            raise ValueError(
+                f"Model '{self._current_model}' has no chat template in its tokenizer; "
+                f"set prompt_template for it in models.yaml."
+            )
+        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
     async def _acquire(self) -> None:
         """
@@ -218,7 +251,11 @@ class LocalService(LLMProvider):
 
     async def fetch_response(self, system_prompt: str, user_prompt: str, model: str) -> str:
         return await self._generate(
-            model, lambda template: resolve_prompt(template, system_prompt, user_prompt)
+            model,
+            lambda template: resolve_prompt(template, system_prompt, user_prompt) if template
+            else self._render_messages(None, [
+                {"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt},
+            ]),
         )
 
     async def chat(self, model: str, messages: list[dict], **generation_kwargs) -> str:
@@ -230,5 +267,5 @@ class LocalService(LLMProvider):
         overrides: max_new_tokens, temperature, top_p, top_k, stop.
         """
         return await self._generate(
-            model, lambda template: resolve_chat_prompt(template, messages), **generation_kwargs
+            model, lambda template: self._render_messages(template, messages), **generation_kwargs
         )
