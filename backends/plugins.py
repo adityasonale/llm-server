@@ -7,18 +7,17 @@ can run on this hardware, the highest `priority` wins:
 
     gguf -> llamacpp (100)
     mlx  -> mlx (90)                           Apple Silicon only
-    hf   -> mlx (90) > vllm (80) > transformers (10)
+    hf   -> mlx (90) > vllm (80)
 """
 import importlib
 
 from backends.base import Backend, ModelSpec
 from backends.hardware import Hardware
-from backends.hf_transformers import TransformersBackend
 from backends.llamacpp import LlamaCppBackend
 from backends.mlx import MlxBackend
 from backends.vllm import VllmBackend
 
-BUILTIN: list[type[Backend]] = [LlamaCppBackend, MlxBackend, VllmBackend, TransformersBackend]
+BUILTIN: list[type[Backend]] = [LlamaCppBackend, MlxBackend, VllmBackend]
 
 
 def load_plugins(extra: list[str] | None = None) -> dict[str, type[Backend]]:

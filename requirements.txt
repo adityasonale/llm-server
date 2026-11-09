@@ -1,11 +1,13 @@
-# Core server — the gateway and the llama-server pass-through.
-# This is what the Docker image installs.
+# The gateway. Models run in separate backend processes (llama-server, vLLM,
+# mlx_lm.server), installed on their own — nothing here touches a GPU.
 fastapi==0.117.1
 uvicorn==0.37.0
 pydantic==2.11.9
 python-dotenv==1.1.1
 requests==2.32.5
 httpx==0.28.1
+PyYAML==6.0.2          # models.yaml
+psutil==5.9.8          # RAM size for backend memory budgets (no os.sysconf on Windows)
 
 # Tracing
 langsmith==0.4.27

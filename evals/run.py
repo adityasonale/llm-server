@@ -1,14 +1,13 @@
 """
 Eval harness — runs a dataset of prompts through a provider, scores each output,
-and records results per commit. Answers "is it correct?", the counterpart to
-benchmark.py's "is it fast?".
+and records results per commit. Answers "is it correct?".
 
 Run from the repo root:
-    python -m evals.run  # local provider, minichat-1.5-3b
-    python -m evals.run --provider local --model distilled-qwen-7b
+    python -m evals.run                       # qwen3.5-9b
+    python -m evals.run --model <name>        # any models.yaml entry
 
-Uses the local provider directly (no running server needed), so it needs the
-torch stack from requirements-local.txt.
+Calls the model manager in-process (no running server needed): it starts the
+model's backend (e.g. llama-server) itself and stops it when the run ends.
 """
 
 import argparse
@@ -22,6 +21,7 @@ from pathlib import Path
 
 import mlflow
 
+from chat import chat_completion, close_upstreams
 from evals.scorers import score
 from utils.logger import get_logger
 from registry.registry import ModelRegistry
@@ -61,19 +61,28 @@ def _load_cases() -> list[dict]:
     return cases
 
 
+async def _ask(model: str, system: str, prompt: str) -> str:
+    response = await chat_completion({
+        "model": model,
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+    })
+    return response["choices"][0]["message"].get("content") or ""
+
+
 async def main() -> None:
+    try:
+        await _run()
+    finally:
+        await close_upstreams()  # stops the backend the model manager started
+
+
+async def _run() -> None:
     with mlflow.start_run() as run:
         parser = argparse.ArgumentParser(description=__doc__)
-        parser.add_argument("--provider", default="local")
-        parser.add_argument("--model", default="minichat-1.5-3b")
+        parser.add_argument("--model", default="qwen3.5-9b")
         parser.add_argument("--benchmark-run-id", default=None)
         args = parser.parse_args()
-
-        if args.provider == "local":
-            from providers.local.services import LocalService
-            service = LocalService()
-        else:
-            raise SystemExit(f"Unknown provider: {args.provider}")
+        args.provider = "managed"  # kept in run metadata and file names
 
         cases = _load_cases()
         now = datetime.now(timezone.utc)
@@ -93,7 +102,7 @@ async def main() -> None:
         for case in cases:
             started = time.perf_counter()
             try:
-                output = await service.fetch_response(case["system"], case["prompt"], args.model)
+                output = await _ask(args.model, case["system"], case["prompt"])
                 ok, detail = score(case["scorer"], output, case.get("expected"))
             except Exception as e:
                 output, ok, detail = "", False, f"error: {e}"
@@ -141,7 +150,7 @@ async def main() -> None:
 
         if passed / total >= 0.85:
             if not args.benchmark_run_id:
-                print("Skipping registration — no benchmark run ID provided. Run benchmark.py first.")
+                print("Skipping registration — no --benchmark-run-id given.")
             else:
                 registry = ModelRegistry(tracking_uri="sqlite:///mlflow.db")
                 version = registry.register(

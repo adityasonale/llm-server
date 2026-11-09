@@ -12,10 +12,4 @@ services:
     # survive `docker compose down` and stay readable without exec-ing in.
     volumes:
       - ./logs:/app/logs
-      # Hub downloads land here; a named volume keeps them across restarts
-      # so a model is not re-fetched every time the container is recreated.
-      - hf-cache:/home/appuser/.cache/huggingface
     restart: unless-stopped
-
-volumes:
-  hf-cache:

@@ -9,8 +9,8 @@
 #   .gguf file, or a folder holding one          -> llamacpp  (llama-server)
 #   MLX folder (config.json has "quantization")  -> mlx       (Apple Silicon)
 #   Hugging Face folder (config.json + weights)  -> mlx on Apple Silicon,
-#                                                   vllm on Linux + NVIDIA,
-#                                                   else transformers (in-process, no tool calls)
+#                                                   vllm on Linux + NVIDIA
+#                                                   (no backend elsewhere)
 
 # Machine-specific settings for each backend plugin.
 backends:
@@ -40,8 +40,5 @@ models:
   qwen3-4b-mlx:
     path: ~/models/Qwen3-4B-4bit     # MLX folder from mlx-community
 
-  minichat-hf:
-    path: ~/models/MiniChat-1.5-3B   # Hugging Face folder
-    # transformers-backend options:
-    # prompt_template: mistral       # default: the tokenizer's own chat template
-    # quantize: 4-bit                # default: 4-bit on CUDA, none elsewhere
+  qwen3-8b-hf:
+    path: ~/models/Qwen3-8B-AWQ      # Hugging Face folder (mlx or vllm)

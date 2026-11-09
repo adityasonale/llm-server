@@ -23,23 +23,18 @@ Then ask for `model="qwen3.5-9b"`. llm-server detects the format from the path, 
 |---|---|---|
 | `.gguf` file (or a folder with one) | `llamacpp` (llama-server) | llama-server binary |
 | MLX folder | `mlx` (mlx_lm.server) | Apple Silicon, `pip install mlx-lm` |
-| Hugging Face folder | `mlx`, else `vllm`, else `transformers` | as above / Linux + NVIDIA + `vllm` / nothing extra (no tool calls) |
+| Hugging Face folder | `mlx`, else `vllm` | as above / Linux + NVIDIA + `vllm` |
 
 `GET /v1/models` shows what each entry resolves to. New backends are `backends.base.Backend` subclasses, either built in (`backends/plugins.py`) or listed under `plugins:` in `models.yaml`.
 
-## Legacy prefixes
+## Legacy prefix
 
-Still accepted on `model`. `llamacpp/<name>` uses the managed model when `<name>` is in `models.yaml`:
-
-| Prefix | Backend | Tools | Streaming |
-|---|---|---|---|
-| `llamacpp/<model>` | llama.cpp `llama-server` (GGUF), forwarded untouched | yes | yes |
-| `local/<model>` | in-process transformers, models from `LOCAL_MODELS` in `settings.py` | no | single chunk |
+`llamacpp/<model>` is still accepted on `model`: it uses the managed model when `<model>` is in `models.yaml`, and otherwise forwards untouched to a llama-server you run yourself at `LLAMACPP_BASE_URL`.
 
 ## Usage
 
 ```bash
-pip install -r requirements-local.txt
+pip install -r requirements.txt
 uvicorn main:app --port 8000
 ```
 
@@ -55,4 +50,4 @@ reply = client.chat.completions.create(
 
 For the unmanaged `llamacpp/` path, run llama-server yourself at `LLAMACPP_BASE_URL` (default `http://127.0.0.1:8089/v1`).
 
-The original `POST /generate` endpoint (`{system_prompt, user_prompt, model, provider}`) still works for the `local` provider.
+llm-server itself has no GPU dependencies: it is a FastAPI gateway, and the models run in the backend processes it starts.

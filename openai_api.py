@@ -45,8 +45,8 @@ def register_error_handlers(app) -> None:
     async def _openai_error(_: Request, e: OpenAIError):
         return _error_response(e.status, e.message, e.type, e.code, e.headers)
 
-    # FastAPI's default 422 {"detail": [...]} is kept for /generate; /v1 gets
-    # OpenAI's 400 shape so SDK clients report it as a BadRequestError.
+    # /v1 gets OpenAI's 400 shape so SDK clients report it as a
+    # BadRequestError; any other route keeps FastAPI's default 422.
     from fastapi.exception_handlers import request_validation_exception_handler
 
     @app.exception_handler(RequestValidationError)

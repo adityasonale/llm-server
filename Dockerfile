@@ -5,14 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY requirements.txt requirements-local.txt ./
-
-# CPU wheel: the PyPI torch bundles ~3GB of CUDA libs this container cannot use.
-# Own layer so a later failure does not re-download it.
-RUN pip install --no-cache-dir --timeout 120 --retries 10 \
-    torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
-
-RUN pip install --no-cache-dir --timeout 120 --retries 10 -r requirements-local.txt
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --timeout 120 --retries 10 -r requirements.txt
 
 COPY . .
 

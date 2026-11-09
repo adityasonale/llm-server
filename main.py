@@ -1,14 +1,9 @@
-from fastapi import FastAPI, HTTPException, Header
-from pydantic import BaseModel
-from router import get_response
-from providers.base import ProviderOverloadedError
-from utils.logger import get_logger
-from authentication.api_key import validate_api_key
 from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
 from chat import close_upstreams
 from openai_api import router as openai_router, register_error_handlers
-
-logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -26,55 +21,7 @@ app = FastAPI(
 app.include_router(openai_router)
 register_error_handlers(app)
 
-class GenerateRequest(BaseModel):
-    system_prompt: str
-    user_prompt: str
-    model: str
-    provider: str
-
-class GenerateResponse(BaseModel):
-    content: str
-    model: str
-    provider: str
-
 
 @app.get("/health", tags=["Health"])
 async def health():
     return {"status": "ok"}
-
-@app.post("/generate", response_model=GenerateResponse)
-async def generate(request: GenerateRequest, x_api_key: str = Header(...)):
-    entry = validate_api_key(x_api_key)
-
-    if entry is None:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    
-    logger.info("Incoming request — user: %s, project: %s, provider: %s, model: %s", entry["user"], entry["project"], request.provider, request.model)
-
-    try:
-        content = await get_response(
-            system_prompt=request.system_prompt,
-            user_prompt=request.user_prompt,
-            model=request.model,
-            provider=request.provider,
-            langsmith_extra={
-                "metadata": {
-                    "user": entry["user"],
-                    "project": entry["project"],
-                }
-            },
-        )
-        logger.info("Request completed — user: %s, project: %s", entry["user"], entry["project"])
-        return GenerateResponse(content=content, model=request.model, provider=request.provider)
-    except ProviderOverloadedError as e:
-        # The request is fine; the server cannot serve it right now.
-        logger.warning("Provider overloaded: %s", e)
-        raise HTTPException(
-            status_code=503, detail=str(e), headers={"Retry-After": str(e.retry_after)}
-        )
-    except ValueError as e:
-        logger.error("Bad request: %s", e)
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error("Internal error: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))

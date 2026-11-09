@@ -1,5 +1,5 @@
 """
-What this machine can run, detected without importing torch.
+What this machine can run, detected from the OS and nvidia-smi.
 
 Plugins use it to decide whether they can serve here at all (MLX needs Apple
 Silicon, vLLM needs CUDA) and how much memory a model may use.
