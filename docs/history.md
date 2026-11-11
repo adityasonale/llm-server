@@ -22,3 +22,6 @@ How llm-server got its current shape, 2–3 lines per change. Current design: th
   removed; every model runs in its own backend process. Today: Qwen3.5-9B on the RTX 4060.
 - **2026-11-09: docs split.** `CLAUDE.md` keeps only instructions and rules; architecture is on
   the ecosystem site; pending work is in `docs/backlog.md`.
+- **2026-11-11: MLflow removed.** Eval runs are recorded only in `evals/results/*.jsonl` (summary
+  line now includes average latency). The MLflow model registry went too: nothing read its aliases
+  and the benchmark run it needed was gone. LangSmith stays for tracing.
